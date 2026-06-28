@@ -1850,7 +1850,7 @@ def register_page(request):
 
 def offline_page(request):
     """Offline page when user has no internet connection"""
-    return render(request, 'accounts/offline.html')
+    return render(request, 'accounts/offline_page.html')
 
 
 @login_required
