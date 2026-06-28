@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Students{% endblock %}
+
+{% block content %}
+
+<div class="dashboard-header">
+    <h1>Students</h1>
+    <p>Manage all students in the system</p>
+</div>
+
+<!-- Search and Filter Bar -->
+<div class="modern-card">
+    <div class="card-header-modern">
+        <h3><i class="fas fa-search"></i> Search Students</h3>
+        {% if request.user.role == 'TEACHER' or request.user.role == 'HEAD_TEACHER' %}
+        <a href="{% url 'register_page' %}" class="btn-primary">
+            <i class="fas fa-plus"></i> Add Student
+        </a>
+        {% endif %}
+    </div>
+    <form method="GET" class="search-form">
+        <div class="filter-row">
+            <div class="form-group" style="flex: 2;">
+                <input type="text" name="search" class="form-control-modern" 
+                       placeholder="Search by name or admission number..." 
+                       value="{{ search_query }}">
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <select name="has_leadership" class="form-control-modern">
+                    <option value="">All Students</option>
+                    <option value="true" {% if leadership_filter == 'true' %}selected{% endif %}>Has Leadership</option>
+                    <option value="false" {% if leadership_filter == 'false' %}selected{% endif %}>No Leadership</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-search"></i> Search
+                </button>
+            </div>
+            {% if search_query or leadership_filter %}
+            <div class="form-group">
+                <a href="{% url 'student_list' %}" class="btn-secondary">Clear</a>
+            </div>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- Students Table -->
+<div class="modern-card">
+    <div class="card-header-modern">
+        <h3><i class="fas fa-users"></i> All Students</h3>
+        <span class="student-count">{{ students|length }} student{{ students|length|pluralize }}</span>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table-modern">
+            <thead>
+                <tr>
+                    <th>Student Name</th>
+                    <th>Adm No</th>
+                    <th>Class</th>
+                    <th>Gender</th>
+                    <th>Leadership</th>
+                    <th>Residence</th>
+                    <th>Medical</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                <tr>
+                    <td>
+                        <a href="{% url 'students_detail' student.id %}" class="student-link">
+                            {{ student.first_name }} {{ student.last_name }}
+                        </a>
+                    </td>
+                    <td>{{ student.registration_number }}</td>
+                    <td>{{ student.current_class|default:"Not Assigned" }}</td>
+                    <td>
+                        {% if student.gender == 'MALE' %}
+                            <span class="gender-male"><i class="fas fa-mars"></i> Male</span>
+                        {% elif student.gender == 'FEMALE' %}
+                            <span class="gender-female"><i class="fas fa-venus"></i> Female</span>
+                        {% else %}
+                            <span class="gender-not-set">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if student.has_leadership %}
+                            <span class="leadership-yes"><i class="fas fa-star"></i> Yes</span>
+                        {% else %}
+                            <span class="leadership-no">No</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if student.address %}
+                            {{ student.address|truncatechars:20 }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if student.medical_condition %}
+                            <span class="medical-yes" title="{{ student.medical_condition }}">
+                                <i class="fas fa-notes-medical"></i> Yes
+                            </span>
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if request.user.role == 'SUPER_ADMIN' %}
+                        <button class="btn-delete" onclick="confirmDelete({{ student.id }})">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="empty-state">
+                        <i class="fas fa-users"></i>
+                        <p>No students found</p>
+                        {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'HEAD_TEACHER' %}
+                        <a href="{% url 'register_page' %}" class="btn-primary" style="margin-top: 1rem;">Add Your First Student</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function confirmDelete(id) {
+        if(confirm('Are you sure you want to delete this student? This action cannot be undone!')) {
+            window.location.href = '/students/delete/' + id + '/';
+        }
+    }
+</script>
+
+{% endblock %}

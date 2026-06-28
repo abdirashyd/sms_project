@@ -1,0 +1,1009 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Subscription{% endblock %}
+
+{% block content %}
+
+<div class="dashboard-header">
+    <h1>Subscription Plan</h1>
+    <p>Manage your school's subscription to EduNexus</p>
+</div>
+
+<!-- Status Banner -->
+<div class="status-banner status-{{ status_msg.type }}">
+    <div class="status-icon">
+        {% if status_msg.type == 'success' %}
+            <i class="fas fa-check-circle"></i>
+        {% elif status_msg.type == 'warning' %}
+            <i class="fas fa-exclamation-triangle"></i>
+        {% elif status_msg.type == 'danger' %}
+            <i class="fas fa-times-circle"></i>
+        {% else %}
+            <i class="fas fa-info-circle"></i>
+        {% endif %}
+    </div>
+    <div class="status-content">
+        <div class="status-title">{{ status_msg.title }}</div>
+        <div class="status-message">{{ status_msg.message }}</div>
+    </div>
+</div>
+
+<!-- Pricing Cards -->
+<div class="pricing-grid">
+    <!-- Monthly Plan -->
+    <div class="pricing-card {% if subscription.billing_cycle == 'MONTHLY' %}popular{% endif %}">
+        {% if subscription.billing_cycle == 'MONTHLY' %}
+        <div class="popular-badge">Current Plan</div>
+        {% endif %}
+        <div class="pricing-icon">
+            <i class="fas fa-calendar-alt"></i>
+        </div>
+        <h3>Monthly Plan</h3>
+        <div class="pricing-price">
+            <span class="currency">KES</span>
+            <span class="amount">{{ monthly_fee|floatformat:0 }}</span>
+            <span class="period">/month</span>
+        </div>
+        <ul class="pricing-features">
+            <li><i class="fas fa-check-circle"></i> Based on {{ student_count }} students</li>
+            <li><i class="fas fa-check-circle"></i> Full access to all features</li>
+            <li><i class="fas fa-check-circle"></i> Technical support included</li>
+            <li><i class="fas fa-check-circle"></i> Monthly billing cycle</li>
+        </ul>
+        <div class="pricing-actions">
+            {% if subscription.billing_cycle == 'MONTHLY' %}
+                <button class="pricing-btn current" disabled>Current Plan</button>
+            {% else %}
+                <button class="pricing-btn manual-btn" onclick="showManualPaymentModal('MONTHLY', '{{ monthly_fee|floatformat:0 }}')">
+                    <i class="fas fa-check-circle"></i> Request Manual Payment
+                </button>
+                <!-- STK Push Button - Commented out for now, uncomment when Paybill is ready -->
+                <!--
+                <button class="pricing-btn stk-btn" onclick="showSTKPushModal('MONTHLY', '{{ monthly_fee|floatformat:0 }}')">
+                    <i class="fas fa-phone-alt"></i> Pay via M-Pesa
+                </button>
+                -->
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Termly Plan -->
+    <div class="pricing-card {% if subscription.billing_cycle == 'TERMLY' %}popular{% endif %}">
+        {% if subscription.billing_cycle == 'TERMLY' %}
+        <div class="popular-badge">Current Plan</div>
+        {% else %}
+        <div class="popular-badge">Save 10%</div>
+        {% endif %}
+        <div class="pricing-icon">
+            <i class="fas fa-calendar-week"></i>
+        </div>
+        <h3>Termly Plan</h3>
+        <div class="pricing-price">
+            <span class="currency">KES</span>
+            <span class="amount">{{ termly_fee|floatformat:0 }}</span>
+            <span class="period">/term</span>
+        </div>
+        <div class="price-save">Save KES {{ monthly_fee|floatformat:0|add:monthly_fee|floatformat:0 }} yearly</div>
+        <ul class="pricing-features">
+            <li><i class="fas fa-check-circle"></i> Based on {{ student_count }} students</li>
+            <li><i class="fas fa-check-circle"></i> 3 months billing cycle</li>
+            <li><i class="fas fa-check-circle"></i> Best for term-based budgeting</li>
+            <li><i class="fas fa-check-circle"></i> Priority support</li>
+        </ul>
+        <div class="pricing-actions">
+            {% if subscription.billing_cycle == 'TERMLY' %}
+                <button class="pricing-btn current" disabled>Current Plan</button>
+            {% else %}
+                <button class="pricing-btn manual-btn" onclick="showManualPaymentModal('TERMLY', '{{ termly_fee|floatformat:0 }}')">
+                    <i class="fas fa-check-circle"></i> Request Manual Payment
+                </button>
+                <!--
+                <button class="pricing-btn stk-btn" onclick="showSTKPushModal('TERMLY', '{{ termly_fee|floatformat:0 }}')">
+                    <i class="fas fa-phone-alt"></i> Pay via M-Pesa
+                </button>
+                -->
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Annual Plan -->
+    <div class="pricing-card {% if subscription.billing_cycle == 'ANNUALLY' %}popular{% endif %}">
+        {% if subscription.billing_cycle == 'ANNUALLY' %}
+        <div class="popular-badge">Current Plan</div>
+        {% else %}
+        <div class="popular-badge">Best Value</div>
+        {% endif %}
+        <div class="pricing-icon">
+            <i class="fas fa-calendar-year"></i>
+        </div>
+        <h3>Annual Plan</h3>
+        <div class="pricing-price">
+            <span class="currency">KES</span>
+            <span class="amount">{{ annual_fee|floatformat:0 }}</span>
+            <span class="period">/year</span>
+        </div>
+        <div class="price-save">Save KES {{ monthly_fee|floatformat:0|add:monthly_fee|add:monthly_fee|floatformat:0 }} yearly</div>
+        <ul class="pricing-features">
+            <li><i class="fas fa-check-circle"></i> Based on {{ student_count }} students</li>
+            <li><i class="fas fa-check-circle"></i> 9 months school year</li>
+            <li><i class="fas fa-check-circle"></i> Best value - save 20%</li>
+            <li><i class="fas fa-check-circle"></i> Premium support + dedicated manager</li>
+        </ul>
+        <div class="pricing-actions">
+            {% if subscription.billing_cycle == 'ANNUALLY' %}
+                <button class="pricing-btn current" disabled>Current Plan</button>
+            {% else %}
+                <button class="pricing-btn manual-btn" onclick="showManualPaymentModal('ANNUALLY', '{{ annual_fee|floatformat:0 }}')">
+                    <i class="fas fa-check-circle"></i> Request Manual Payment
+                </button>
+                <!--
+                <button class="pricing-btn stk-btn" onclick="showSTKPushModal('ANNUALLY', '{{ annual_fee|floatformat:0 }}')">
+                    <i class="fas fa-phone-alt"></i> Pay via M-Pesa
+                </button>
+                -->
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ========== MANUAL PAYMENT MODAL ========== -->
+<div id="manualPaymentModal" class="payment-modal" style="display: none;">
+    <div class="payment-modal-content">
+        <div class="payment-modal-header">
+            <h3><i class="fas fa-phone-alt"></i> Manual Payment Request</h3>
+            <button class="modal-close" onclick="closeManualPaymentModal()">&times;</button>
+        </div>
+        <div class="payment-modal-body">
+            <div class="payment-summary">
+                <div class="payment-plan" id="manualModalPlanName">Monthly Plan</div>
+                <div class="payment-amount" id="manualModalAmount">KES 0</div>
+            </div>
+            
+            <div class="manual-payment-info">
+                <div class="info-box">
+                    <i class="fas fa-info-circle"></i>
+                    <p><strong>Send payment to:</strong></p>
+                    <div class="mpesa-number">
+                        <i class="fas fa-phone-alt"></i> <strong>07XX XXX XXX</strong>
+                    </div>
+                    <small>After sending payment, click "I Have Paid" below. The Super Admin will be notified and will activate your school within 24 hours.</small>
+                </div>
+            </div>
+            
+            <form id="manualPaymentForm" method="POST" action="{% url 'manual_subscription_payment' %}">
+                {% csrf_token %}
+                <input type="hidden" name="billing_cycle" id="manualModalBillingCycle">
+                <button type="submit" class="btn-pay">
+                    <i class="fas fa-check-circle"></i> I Have Paid
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ========== MANUAL PAYMENT SUCCESS MODAL ========== -->
+<div id="manualPaymentSuccessModal" class="payment-modal" style="display: none;">
+    <div class="payment-modal-content success-modal">
+        <div class="success-icon">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="payment-modal-body" style="text-align: center;">
+            <h3 class="success-title">Request Sent!</h3>
+            <p>Your payment request has been recorded successfully.</p>
+            <div class="notification-box">
+                <i class="fas fa-bell"></i>
+                <p>The Super Admin has been notified. Your school will be activated once payment is confirmed.</p>
+            </div>
+            <button onclick="window.location.href='{% url 'subscription_dashboard' %}'" class="btn-pay">
+                Back to Dashboard
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== STK PUSH MODAL (FOR FUTURE USE - COMMENTED OUT BUT KEPT) ========== -->
+<div id="stkPushModal" class="payment-modal" style="display: none;">
+    <div class="payment-modal-content">
+        <div class="payment-modal-header">
+            <h3><i class="fas fa-credit-card"></i> Complete Payment</h3>
+            <button class="modal-close" onclick="closeSTKPushModal()">&times;</button>
+        </div>
+        <div class="payment-modal-body">
+            <div class="payment-summary">
+                <div class="payment-plan" id="stkModalPlanName">Monthly Plan</div>
+                <div class="payment-amount" id="stkModalAmount">KES 0</div>
+            </div>
+            <form id="stkPaymentForm" method="POST" action="{% url 'initiate_subscription_payment' %}">
+                {% csrf_token %}
+                <input type="hidden" name="billing_cycle" id="stkModalBillingCycle">
+                <div class="form-group">
+                    <label><i class="fas fa-phone-alt"></i> M-Pesa Phone Number</label>
+                    <input type="tel" name="phone_number" class="form-control" placeholder="0712345678" required>
+                    <small>You'll receive a prompt on this phone. Enter your PIN to complete payment.</small>
+                </div>
+                <button type="submit" class="btn-pay">
+                    <i class="fas fa-arrow-right"></i> Pay Now
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ========== STK PUSH LOADING MODAL (FOR FUTURE USE) ========== -->
+<div id="stkLoadingModal" class="payment-processing" style="display: none;">
+    <div class="processing-card">
+        <div class="processing-icon">
+            <div class="spinner"></div>
+        </div>
+        <h2>Processing Payment</h2>
+        <div class="payment-details">
+            <div class="detail-row">
+                <span>Amount:</span>
+                <strong id="stkLoadingAmount">KES 0</strong>
+            </div>
+            <div class="detail-row">
+                <span>Phone:</span>
+                <strong id="stkLoadingPhone">-</strong>
+            </div>
+        </div>
+        <p class="instruction">Please check your phone and enter M-Pesa PIN</p>
+        <div class="timer">
+            <i class="fas fa-hourglass-half"></i>
+            Time remaining: <span id="stkSeconds">60</span> seconds
+        </div>
+    </div>
+</div>
+
+<!-- Payment History -->
+<div class="modern-card">
+    <div class="card-header-modern">
+        <h3><i class="fas fa-history"></i> Payment History</h3>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table-modern">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Amount</th>
+                    <th>Billing Cycle</th>
+                    <th>Status</th>
+                    <th>Receipt</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for payment in payments %}
+                <tr>
+                    <td>{{ payment.created_at|date:"d M Y" }}</td>
+                    <td><strong>KES {{ payment.amount|floatformat:0 }}</strong></td>
+                    <td>{{ payment.get_billing_cycle_display }}</td>
+                    <td>
+                        {% if payment.status == 'COMPLETED' %}
+                            <span class="status-badge status-paid"><i class="fas fa-check-circle"></i> Paid</span>
+                        {% elif payment.status == 'PENDING' %}
+                            <span class="status-badge status-pending"><i class="fas fa-clock"></i> Pending</span>
+                        {% else %}
+                            <span class="status-badge status-failed"><i class="fas fa-times-circle"></i> Failed</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if payment.status == 'COMPLETED' %}
+                            <a href="#" class="btn-receipt"><i class="fas fa-download"></i> Receipt</a>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="empty-state-table">No payment records found</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+/* Status Banner */
+.status-banner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    border-radius: 16px;
+    margin-bottom: 2rem;
+}
+
+.status-success { background: #d1fae5; border-left: 4px solid #10b981; }
+.status-warning { background: #fef3c7; border-left: 4px solid #f59e0b; }
+.status-danger { background: #fee2e2; border-left: 4px solid #ef4444; }
+.status-info { background: #f1f5f9; border-left: 4px solid #64748b; }
+
+.status-icon {
+    font-size: 1.5rem;
+}
+
+.status-success .status-icon { color: #10b981; }
+.status-warning .status-icon { color: #f59e0b; }
+.status-danger .status-icon { color: #ef4444; }
+.status-info .status-icon { color: #64748b; }
+
+.status-title {
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+}
+
+.status-message {
+    font-size: 0.8rem;
+    opacity: 0.8;
+}
+
+/* Pricing Grid */
+.pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.pricing-card {
+    background: white;
+    border-radius: 24px;
+    padding: 1.5rem;
+    text-align: center;
+    position: relative;
+    transition: all 0.3s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.pricing-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+}
+
+.pricing-card.popular {
+    border: 2px solid #10b981;
+    transform: scale(1.02);
+}
+
+.popular-badge {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #10b981;
+    color: white;
+    padding: 0.25rem 1rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.pricing-icon {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #2563eb, #10b981);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    color: white;
+    font-size: 1.5rem;
+}
+
+.pricing-card h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.pricing-price {
+    margin-bottom: 0.5rem;
+}
+
+.pricing-price .currency {
+    font-size: 0.8rem;
+    vertical-align: top;
+}
+
+.pricing-price .amount {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #1e293b;
+}
+
+.pricing-price .period {
+    font-size: 0.7rem;
+    color: #64748b;
+}
+
+.price-save {
+    font-size: 0.7rem;
+    color: #10b981;
+    background: #d1fae5;
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    margin-bottom: 1rem;
+}
+
+.pricing-features {
+    list-style: none;
+    text-align: left;
+    margin: 1rem 0;
+    padding: 0;
+}
+
+.pricing-features li {
+    padding: 0.4rem 0;
+    font-size: 0.8rem;
+    color: #475569;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pricing-features li i {
+    color: #10b981;
+    font-size: 0.8rem;
+    width: 18px;
+}
+
+.pricing-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.pricing-btn {
+    width: 100%;
+    padding: 0.7rem;
+    border-radius: 40px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    color: white;
+}
+
+.pricing-btn.current {
+    background: #e2e8f0;
+    color: #64748b;
+    cursor: not-allowed;
+}
+
+.manual-btn {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.manual-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.stk-btn {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+}
+
+.stk-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+/* Payment Modal */
+.payment-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.payment-modal-content {
+    background: white;
+    border-radius: 24px;
+    width: 90%;
+    max-width: 450px;
+    animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.payment-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.payment-modal-header h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #64748b;
+}
+
+.modal-close:hover {
+    color: #dc2626;
+}
+
+.payment-modal-body {
+    padding: 1.5rem;
+}
+
+.payment-summary {
+    text-align: center;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 16px;
+    margin-bottom: 1.5rem;
+}
+
+.payment-plan {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.payment-amount {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #1e293b;
+}
+
+/* Manual Payment Info Box */
+.manual-payment-info {
+    margin-bottom: 1.5rem;
+}
+
+.info-box {
+    background: #f0f9ff;
+    padding: 1rem;
+    border-radius: 16px;
+    text-align: center;
+    border-left: 4px solid #2563eb;
+}
+
+.info-box i {
+    font-size: 1.5rem;
+    color: #2563eb;
+    margin-bottom: 0.5rem;
+}
+
+.info-box p {
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.mpesa-number {
+    background: #d1fae5;
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 40px;
+    margin: 0.5rem 0;
+}
+
+.mpesa-number i {
+    font-size: 0.9rem;
+    margin-right: 0.3rem;
+}
+
+.info-box small {
+    font-size: 0.7rem;
+    color: #64748b;
+    display: block;
+    margin-top: 0.5rem;
+}
+
+/* Success Modal */
+.success-modal {
+    text-align: center;
+}
+
+.success-icon {
+    text-align: center;
+    padding-top: 2rem;
+}
+
+.success-icon i {
+    font-size: 4rem;
+    color: #10b981;
+}
+
+.success-title {
+    color: #10b981;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.notification-box {
+    background: #fef3c7;
+    padding: 1rem;
+    border-radius: 12px;
+    margin: 1rem 0;
+}
+
+.notification-box i {
+    font-size: 1.5rem;
+    color: #f59e0b;
+    margin-bottom: 0.5rem;
+}
+
+.notification-box p {
+    font-size: 0.85rem;
+    color: #92400e;
+}
+
+/* STK Push Loading Modal */
+.payment-processing {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(16, 185, 129, 0.95));
+    backdrop-filter: blur(10px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.processing-card {
+    background: white;
+    border-radius: 32px;
+    padding: 2rem;
+    text-align: center;
+    max-width: 380px;
+    width: 90%;
+    animation: fadeInUp 0.4s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.processing-icon {
+    margin-bottom: 1.5rem;
+}
+
+.spinner {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto;
+    border: 4px solid #e2e8f0;
+    border-top: 4px solid #10b981;
+    border-right: 4px solid #2563eb;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.processing-card h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: #1e293b;
+}
+
+.payment-details {
+    background: #f8fafc;
+    border-radius: 16px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.3rem 0;
+}
+
+.detail-row span {
+    color: #64748b;
+    font-size: 0.8rem;
+}
+
+.detail-row strong {
+    color: #1e293b;
+    font-size: 0.9rem;
+}
+
+.instruction {
+    color: #475569;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+}
+
+.timer {
+    font-size: 0.8rem;
+    color: #64748b;
+    padding-top: 0.5rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+.timer i {
+    margin-right: 0.3rem;
+    color: #f59e0b;
+}
+
+.timer span {
+    font-weight: 700;
+    color: #dc2626;
+}
+
+.btn-pay {
+    width: 100%;
+    padding: 0.8rem;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.btn-pay:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+/* Modern Table */
+.data-table-modern {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table-modern th {
+    text-align: left;
+    padding: 0.8rem;
+    background: #f8fafc;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.data-table-modern td {
+    padding: 0.8rem;
+    font-size: 0.8rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.status-paid { background: #d1fae5; color: #059669; }
+.status-pending { background: #fef3c7; color: #d97706; }
+.status-failed { background: #fee2e2; color: #dc2626; }
+
+.btn-receipt {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.6rem;
+    background: #2563eb;
+    color: white;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 0.7rem;
+}
+
+.empty-state-table {
+    text-align: center;
+    padding: 2rem;
+    color: #64748b;
+}
+
+/* Form Group */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: #374151;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.7rem 1rem;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 0.85rem;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-group small {
+    display: block;
+    font-size: 0.7rem;
+    color: #64748b;
+    margin-top: 0.3rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .pricing-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .pricing-card.popular {
+        transform: scale(1);
+    }
+    
+    .status-banner {
+        padding: 0.8rem 1rem;
+    }
+    
+    .pricing-actions {
+        flex-direction: column;
+    }
+}
+</style>
+
+<script>
+let selectedCycle = '';
+let selectedAmount = '';
+
+// ========== MANUAL PAYMENT FUNCTIONS ==========
+function showManualPaymentModal(cycle, amount) {
+    selectedCycle = cycle;
+    selectedAmount = amount;
+    
+    document.getElementById('manualModalPlanName').innerText = 
+        cycle === 'MONTHLY' ? 'Monthly Plan' : 
+        cycle === 'TERMLY' ? 'Termly Plan' : 'Annual Plan';
+    document.getElementById('manualModalAmount').innerHTML = `KES ${parseInt(amount).toLocaleString()}`;
+    document.getElementById('manualModalBillingCycle').value = cycle;
+    document.getElementById('manualPaymentModal').style.display = 'flex';
+}
+
+function closeManualPaymentModal() {
+    document.getElementById('manualPaymentModal').style.display = 'none';
+}
+
+// Handle manual payment form submission via AJAX
+document.getElementById('manualPaymentForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    closeManualPaymentModal();
+    
+    // Show success modal
+    document.getElementById('manualPaymentSuccessModal').style.display = 'flex';
+    
+    // Submit the form in background
+    fetch("{% url 'manual_subscription_payment' %}", {
+        method: 'POST',
+        body: new FormData(this),
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    }).then(response => response.json())
+      .then(data => {
+          if (!data.success) {
+              console.log('Error:', data.error);
+          }
+      }).catch(error => console.log('Error:', error));
+});
+
+function closeSuccessModal() {
+    document.getElementById('manualPaymentSuccessModal').style.display = 'none';
+}
+
+// ========== STK PUSH FUNCTIONS (FOR FUTURE USE - COMMENTED OUT) ==========
+// Uncomment these when you get Paybill and want to re-enable STK Push
+
+/*
+function showSTKPushModal(cycle, amount) {
+    selectedCycle = cycle;
+    selectedAmount = amount;
+    
+    document.getElementById('stkModalPlanName').innerText = 
+        cycle === 'MONTHLY' ? 'Monthly Plan' : 
+        cycle === 'TERMLY' ? 'Termly Plan' : 'Annual Plan';
+    document.getElementById('stkModalAmount').innerHTML = `KES ${parseInt(amount).toLocaleString()}`;
+    document.getElementById('stkModalBillingCycle').value = cycle;
+    document.getElementById('stkPushModal').style.display = 'flex';
+}
+
+function closeSTKPushModal() {
+    document.getElementById('stkPushModal').style.display = 'none';
+}
+
+function showSTKLoadingModal(phone, amount) {
+    document.getElementById('stkLoadingAmount').innerHTML = `KES ${parseInt(amount).toLocaleString()}`;
+    document.getElementById('stkLoadingPhone').innerHTML = phone;
+    document.getElementById('stkLoadingModal').style.display = 'flex';
+    
+    let timeLeft = 60;
+    const timerInterval = setInterval(() => {
+        timeLeft--;
+        const secondsSpan = document.getElementById('stkSeconds');
+        if (secondsSpan) secondsSpan.innerText = timeLeft;
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            document.getElementById('stkLoadingModal').style.display = 'none';
+            alert('Payment timeout. Please try again.');
+        }
+    }, 1000);
+}
+
+function closeSTKLoadingModal() {
+    document.getElementById('stkLoadingModal').style.display = 'none';
+}
+*/
+
+// Close modals when clicking outside
+window.onclick = function(event) {
+    const manualModal = document.getElementById('manualPaymentModal');
+    const successModal = document.getElementById('manualPaymentSuccessModal');
+    const stkModal = document.getElementById('stkPushModal');
+    const stkLoadingModal = document.getElementById('stkLoadingModal');
+    
+    if (event.target === manualModal) closeManualPaymentModal();
+    if (event.target === successModal) closeSuccessModal();
+    // if (event.target === stkModal) closeSTKPushModal();
+    // if (event.target === stkLoadingModal) closeSTKLoadingModal();
+}
+</script>
+
+{% endblock %}

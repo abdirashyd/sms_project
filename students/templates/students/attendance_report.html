@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Attendance Report{% endblock %}
+
+{% block content %}
+
+<div class="dashboard-header">
+    <h1>Attendance Report</h1>
+</div>
+
+<!-- Date Filter for Report -->
+<div class="modern-card">
+    <div class="card-header-modern">
+        <h3><i class="fas fa-calendar-alt"></i> Filter Attendance</h3>
+    </div>
+    <form method="GET" class="search-form" action="{% url 'attendance_report' %}">
+        <div class="filter-row">
+            <div class="form-group">
+                <label>Start Date</label>
+                <input type="date" name="start_date" value="{{ start_date|date:'Y-m-d' }}" class="form-control-modern">
+            </div>
+            <div class="form-group">
+                <label>End Date</label>
+                <input type="date" name="end_date" value="{{ end_date|date:'Y-m-d' }}" class="form-control-modern">
+            </div>
+            <div class="form-group">
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-filter"></i> Filter
+                </button>
+            </div>
+            <div class="form-group">
+                <button type="submit" name="export" value="excel" class="btn-success">
+                    <i class="fas fa-file-excel"></i> Download Excel
+                </button>
+            </div>
+        </div>
+        <input type="hidden" name="class_name" value="{{ request.GET.class_name|default:'All Classes' }}">
+    </form>
+</div>
+
+<!-- Mark Attendance Section -->
+<div class="modern-card">
+    <div class="card-header-modern">
+        <h3><i class="fas fa-calendar-check"></i> Mark Attendance - {{ today|date:"l, F d, Y" }}</h3>
+    </div>
+    
+    <form method="POST">
+        {% csrf_token %}
+        
+        <div class="table-responsive">
+            <table class="data-table-modern">
+                <thead>
+                    <tr>
+                        <th>Student Name</th>
+                        <th>Adm No</th>
+                        <th>Class</th>
+                        <th>Present?</th>
+                        <th>Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students %}
+                    <tr>
+                        <td><strong>{{ student.first_name }} {{ student.last_name }}</strong></td>
+                        <td>{{ student.registration_number }}</td>
+                        <td>{{ student.current_class|default:"Not Assigned" }}</td>
+                        <td class="checkbox-cell">
+                            <label class="checkbox-label">
+                                <input type="checkbox" 
+                                       name="present_{{ student.id }}" 
+                                       class="attendance-checkbox"
+                                       {% if student.id in present_students %}checked{% endif %}>
+                                <span>Present</span>
+                            </label>
+                        </td>
+                        <td>
+                            <input type="text" 
+                                   name="remarks_{{ student.id }}" 
+                                   class="remarks-input" 
+                                   placeholder="Optional remark">
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="empty-state">
+                            <i class="fas fa-users"></i>
+                            <p>No students found for your classes.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if students %}
+        <div class="form-actions" style="margin-top: 1.5rem; justify-content: center;">
+            <button type="submit" class="btn-primary">
+                <i class="fas fa-save"></i> Save Attendance
+            </button>
+        </div>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Attendance Report Summary -->
+<div class="modern-card">
+    <div class="card-header-modern">
+        <h3><i class="fas fa-chart-bar"></i> Today's Summary</h3>
+    </div>
+    <div class="summary-stats" id="summaryStats">
+        <div class="summary-item">Select attendance to see summary</div>
+    </div>
+</div>
+
+<script>
+    function calculateSummary() {
+        const rows = document.querySelectorAll('.data-table-modern tbody tr');
+        let total = 0;
+        let present = 0;
+        let absent = 0;
+        
+        rows.forEach(row => {
+            const checkbox = row.querySelector('.attendance-checkbox');
+            if (checkbox) {
+                total++;
+                if (checkbox.checked) {
+                    present++;
+                } else {
+                    absent++;
+                }
+            }
+        });
+        
+        const summaryDiv = document.getElementById('summaryStats');
+        if (summaryDiv) {
+            if (total === 0) {
+                summaryDiv.innerHTML = '<div class="summary-item">No students found</div>';
+                return;
+            }
+            
+            summaryDiv.innerHTML = `
+                <div class="summary-item">
+                    <div class="summary-label">Total Students</div>
+                    <div class="summary-value">${total}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Present</div>
+                    <div class="summary-value text-success">${present} (${Math.round(present/total*100)}%)</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Absent</div>
+                    <div class="summary-value text-danger">${absent} (${Math.round(absent/total*100)}%)</div>
+                </div>
+            `;
+        }
+    }
+    
+    document.addEventListener('DOMContentLoaded', calculateSummary);
+    
+    document.querySelectorAll('.attendance-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', calculateSummary);
+    });
+</script>
+
+{% endblock %}

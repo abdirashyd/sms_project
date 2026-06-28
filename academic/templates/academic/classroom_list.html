@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Classrooms{% endblock %}
+
+{% block content %}
+
+<div class="dashboard-header">
+    <h1>🏫 Classrooms</h1>
+    <p>View all classes and their students</p>
+</div>
+
+<div class="modern-card">
+    <div class="card-header-modern">
+        <h3><i class="fas fa-building"></i> All Classrooms</h3>
+        {% if request.user.role == 'HEAD_TEACHER' or request.user.role == 'ADMIN' %}
+        <a href="{% url 'add_classroom' %}" class="btn-primary"><i class="fas fa-plus"></i> Add Classroom</a>
+        {% endif %}
+    </div>
+    <div class="table-responsive">
+        <table class="data-table-modern">
+            <thead>
+                <tr>
+                    <th>Class Name</th>
+                    <th>Stream</th>
+                    <th>Class Teacher</th>
+                    <th>Students</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for classroom in classrooms %}
+                <tr>
+                    <td><strong>{{ classroom.name }}</strong></td>
+                    <td>{{ classroom.stream|default:"-" }}</td>
+                    <td>{{ classroom.class_teacher.get_full_name|default:"Not Assigned" }}</td>
+                    <td>{{ classroom.get_students_count }}</td>
+                    <td>
+                        {% if classroom.get_capacity_status == 'Full' %}
+                            <span class="status-badge status-full">🔴 Full</span>
+                        {% elif classroom.get_capacity_status == 'Nearly Full' %}
+                            <span class="status-badge status-warning">🟠 Nearly Full</span>
+                        {% else %}
+                            <span class="status-badge status-success">🟢 Available</span>
+                        {% endif %}
+                    </td>
+                    <td><a href="#" class="btn-view">View</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="empty-state">No classrooms found. <a href="{% url 'add_classroom' %}">Add one</a>{% if request.user.role == 'SUPER_ADMIN' %} or contact Super Admin{% endif %}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.data-table-modern {
+    width: 100%;
+    border-collapse: collapse;
+}
+.data-table-modern th {
+    padding: 1rem;
+    background: #f8fafc;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    text-align: left;
+}
+.data-table-modern td {
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 0.8rem;
+}
+.status-badge {
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+}
+.status-full { background: #fee2e2; color: #dc2626; }
+.status-warning { background: #fef3c7; color: #d97706; }
+.status-success { background: #d1fae5; color: #059669; }
+.btn-view { background: #dbeafe; color: #2563eb; padding: 0.25rem 0.75rem; border-radius: 8px; text-decoration: none; font-size: 0.7rem; }
+</style>
+
+{% endblock %}

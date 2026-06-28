@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Edit Schedule{% endblock %}
+
+{% block content %}
+
+<div class="register-container">
+    <div class="register-header">
+        <h1>Edit Schedule</h1>
+        <p>Update class timetable entry</p>
+    </div>
+
+    <div class="register-form active">
+        <form method="POST">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label>Day <span class="required">*</span></label>
+                <select name="day" required>
+                    <option value="MONDAY" {% if schedule.day == 'MONDAY' %}selected{% endif %}>Monday</option>
+                    <option value="TUESDAY" {% if schedule.day == 'TUESDAY' %}selected{% endif %}>Tuesday</option>
+                    <option value="WEDNESDAY" {% if schedule.day == 'WEDNESDAY' %}selected{% endif %}>Wednesday</option>
+                    <option value="THURSDAY" {% if schedule.day == 'THURSDAY' %}selected{% endif %}>Thursday</option>
+                    <option value="FRIDAY" {% if schedule.day == 'FRIDAY' %}selected{% endif %}>Friday</option>
+                    <option value="SATURDAY" {% if schedule.day == 'SATURDAY' %}selected{% endif %}>Saturday</option>
+                </select>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Subject <span class="required">*</span></label>
+                    <select name="subject" required>
+                        {% for subject in subjects %}
+                        <option value="{{ subject.id }}" {% if schedule.subject.id == subject.id %}selected{% endif %}>{{ subject.name }} ({{ subject.code }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Teacher <span class="required">*</span></label>
+                    <select name="teacher" required>
+                        {% for teacher in teachers %}
+                        <option value="{{ teacher.id }}" {% if schedule.teacher.id == teacher.id %}selected{% endif %}>{{ teacher.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Classroom <span class="required">*</span></label>
+                    <select name="classroom" required>
+                        {% for classroom in classrooms %}
+                        <option value="{{ classroom.id }}" {% if schedule.classroom.id == classroom.id %}selected{% endif %}>{{ classroom.name }} {% if classroom.stream %}({{ classroom.stream }}){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Room / Venue</label>
+                    <input type="text" name="room" value="{{ schedule.room|default:'' }}" placeholder="e.g., Room 101, Lab A">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Start Time <span class="required">*</span></label>
+                    <input type="time" name="start_time" value="{{ schedule.start_time|time:'H:i' }}" required>
+                </div>
+                <div class="form-group">
+                    <label>End Time <span class="required">*</span></label>
+                    <input type="time" name="end_time" value="{{ schedule.end_time|time:'H:i' }}" required>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-save"></i> Update Schedule
+                </button>
+                <a href="{% url 'schedule_list' %}" class="btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

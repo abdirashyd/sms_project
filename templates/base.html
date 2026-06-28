@@ -1,0 +1,559 @@
+{% load static %}
+{% load pwa %} 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>EduNexus | {% block title %}Dashboard{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="icon" href="data:,">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="manifest" href="{% static 'manifest.json' %}?v=2">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gelasio:ital,wght@0,400..700;1,400..700&family=Tangerine:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Petit+Formal+Script&family=Quintessential&family=Tangerine&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&family=Petit+Formal+Script&family=Quintessential&family=Tangerine&display=swap" rel="stylesheet">
+</head>
+<body>
+<!-- Subscription block for non-admin users AND School Admin when expired -->
+{% if request.user.is_authenticated and request.user.school and request.user.role != 'SUPER_ADMIN' %}
+    {% with sub=request.user.school.subscription %}
+        {% if not sub.can_access_system %}
+            <div class="user-subscription-block">
+                <div class="user-subscription-modal">
+                    <div class="modal-icon"><i class="fas fa-school"></i></div>
+                    <h3 class="modal-title">School Access Suspended</h3>
+                    <p class="modal-message">
+                        {% if request.user.role == 'ADMIN' %}
+                            Your school's subscription has expired. Please renew your subscription to restore access.
+                        {% else %}
+                            Your school's subscription has expired. Please contact your school administrator to restore access.
+                        {% endif %}
+                    </p>
+                    {% if request.user.role == 'ADMIN' %}
+                        <a href="{% url 'subscription_dashboard' %}" class="modal-button">View Subscription</a>
+                    {% else %}
+                        <button class="modal-button" onclick="window.location.reload()">Try Again</button>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    {% endwith %}
+{% endif %}
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+        <div class="nav-left">
+            <div class="logo-small">
+                {% if request.user.role == 'SUPER_ADMIN' %}
+                    EduNexus
+                {% elif request.user.school %}
+                    {{ request.user.school.name }}
+                {% else %}
+                    EduNexus
+                {% endif %}
+            </div>
+        </div>
+        <div class="nav-right">
+            <div class="notification-badge" id="notificationBell">
+                <i class="fas fa-bell"></i>
+                <span class="badge-count" id="unreadBadge">0</span>
+            </div>
+            <div class="profile-icon" id="profileIconBtn">
+                <a href="{% url 'profile' %}" class="profile-icon" id="profileIconBtn" style="text-decoration: none;">
+                <div class="avatar-circle">
+                    {{ request.user.first_name|first|default:request.user.username|first|upper }}
+                </div>
+            </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sidebar -->
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div class="logo">
+            {% if request.user.role == 'SUPER_ADMIN' %}
+                EduNexus
+            {% elif request.user.school %}
+                {{ request.user.school.name }}
+            {% else %}
+                EduNexus
+            {% endif %}
+        </div>
+        <button class="sidebar-close" id="sidebarClose">&times;</button>
+    </div>
+    
+    <<ul class="sidebar-menu">
+    <!-- ===== DASHBOARD ===== -->
+    <li class="menu-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" 
+        data-url="{% url 'dashboard' %}" 
+        data-tooltip="Dashboard">
+        <i class="fas fa-tachometer-alt"></i>
+        <span>Dashboard</span>
+    </li>
+
+    <!-- ===== SUPER ADMIN MENU ===== -->
+    {% if request.user.role == 'SUPER_ADMIN' %}
+        <li class="menu-item" 
+            data-url="{% url 'user_list' %}" 
+            data-tooltip="All Users">
+            <i class="fas fa-users"></i><span>All Users</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'register_page' %}" 
+            data-tooltip="Register User">
+            <i class="fas fa-user-plus"></i><span>Register User</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'super_admin_schools' %}" 
+            data-tooltip="Manage Schools">
+            <i class="fas fa-school"></i><span>Manage Schools</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'subject_list' %}" 
+            data-tooltip="Subjects">
+            <i class="fas fa-book"></i><span>Subjects</span>
+        </li>
+    {% endif %}
+
+    <!-- ===== ADMIN MENU ===== -->
+    {% if request.user.role == 'ADMIN' %}
+        <li class="menu-item" 
+            data-url="{% url 'register_page' %}" 
+            data-tooltip="Register User">
+            <i class="fas fa-user-plus"></i><span>Register User</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'user_list' %}" 
+            data-tooltip="User List">
+            <i class="fas fa-users"></i><span>User List</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'payement_detail' %}" 
+            data-tooltip="Finance">
+            <i class="fas fa-money-bill-wave"></i><span>Finance</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'subscription_dashboard' %}" 
+            data-tooltip="Subscription">
+            <i class="fas fa-credit-card"></i><span>Subscription</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'school_payment_settings' %}" 
+            data-tooltip="Payment Settings">
+            <i class="fas fa-cogs"></i><span>Payment Settings</span>
+        </li>
+    {% endif %}
+
+    <!-- ===== HEAD TEACHER MENU ===== -->
+    {% if request.user.role == 'HEAD_TEACHER' %}
+        <li class="menu-item" 
+            data-url="{% url 'user_list' %}" 
+            data-tooltip="User List">
+            <i class="fas fa-users"></i><span>User List</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'register_page' %}" 
+            data-tooltip="Register User">
+            <i class="fas fa-user-plus"></i><span>Register User</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'student_list' %}" 
+            data-tooltip="Students">
+            <i class="fas fa-user-graduate"></i><span>Students</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'teacher_list' %}" 
+            data-tooltip="Teachers">
+            <i class="fas fa-chalkboard-user"></i><span>Teachers</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'classroom_list' %}" 
+            data-tooltip="Classes">
+            <i class="fas fa-building"></i><span>Classes</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'subject_allocations' %}" 
+            data-tooltip="Subject Allocation">
+            <i class="fas fa-book"></i><span>Subject Allocation</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'exam_list' %}" 
+            data-tooltip="Exams">
+            <i class="fas fa-calendar-alt"></i><span>Exams</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'promote_students' %}" 
+            data-tooltip="Promote Students">
+            <i class="fas fa-arrow-up"></i><span>Promote Students</span>
+        </li>
+    {% endif %}
+
+    <!-- ===== TEACHER MENU ===== -->
+    {% if request.user.role == 'TEACHER' %}
+        <li class="menu-item" 
+            data-url="{% url 'student_list' %}" 
+            data-tooltip="My Students">
+            <i class="fas fa-user-graduate"></i><span>My Students</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'attendance_report' %}" 
+            data-tooltip="Attendance">
+            <i class="fas fa-calendar-check"></i><span>Attendance</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'classroom_list' %}" 
+            data-tooltip="My Classes">
+            <i class="fas fa-building"></i><span>My Classes</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'subject_list' %}" 
+            data-tooltip="My Subjects">
+            <i class="fas fa-book"></i><span>My Subjects</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'add_results' %}" 
+            data-tooltip="Add Results">
+            <i class="fas fa-edit"></i><span>Add Results</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'class_results' %}" 
+            data-tooltip="Results">
+            <i class="fas fa-chart-line"></i><span>Results</span>
+        </li>
+    {% endif %}
+
+    <!-- ===== STUDENT MENU ===== -->
+    {% if request.user.role == 'STUDENT' %}
+        <li class="menu-item" 
+            data-url="{% url 'student_list' %}" 
+            data-tooltip="My Profile">
+            <i class="fas fa-user"></i><span>My Profile</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'subject_list' %}" 
+            data-tooltip="My Subjects">
+            <i class="fas fa-book"></i><span>My Subjects</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'report_card' %}" 
+            data-tooltip="My Results">
+            <i class="fas fa-file-alt"></i><span>My Results</span>
+        </li>
+    {% endif %}
+
+    <!-- ===== PARENT MENU ===== -->
+    {% if request.user.role == 'PARENT' %}
+        <li class="menu-item" 
+            data-url="{% url 'student_list' %}" 
+            data-tooltip="My Children">
+            <i class="fas fa-child"></i><span>My Children</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'subject_list' %}" 
+            data-tooltip="Subjects">
+            <i class="fas fa-book"></i><span>Subjects</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'report_card' %}" 
+            data-tooltip="Results">
+            <i class="fas fa-file-alt"></i><span>Results</span>
+        </li>
+        <li class="menu-item" 
+            data-url="{% url 'payement_detail' %}" 
+            data-tooltip="Payments">
+            <i class="fas fa-money-bill-wave"></i><span>Payments</span>
+        </li>
+    {% endif %}
+</ul>
+</aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        {% if messages %}
+            <div class="messages" style="display: none;">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        {% block content %}
+        {% endblock %}
+    </main>
+
+<!-- ========== BOTTOM NAVIGATION (Mobile Only) ========== -->
+<div class="bottom-nav" id="bottomNav">
+    <div class="nav-items">
+        
+        <!-- ===== 1. HOME - All Users ===== -->
+        <div class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" data-url="{% url 'dashboard' %}">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </div>
+
+        <!-- ===== SUPER ADMIN ===== -->
+        {% if request.user.role == 'SUPER_ADMIN' %}
+            <!-- Users -->
+            <div class="nav-item {% if request.resolver_match.url_name == 'user_list' %}active{% endif %}" data-url="{% url 'user_list' %}">
+                <i class="fas fa-users"></i>
+                <span>Users</span>
+            </div>
+            <!-- FAB - SIMPLE LINK -->
+            <a href="{% url 'register_page' %}" class="fab-container" >
+                <div class="fab-main"><i class="fas fa-plus"></i></div>
+            </a>
+            <!-- Schools -->
+            <div class="nav-item {% if request.resolver_match.url_name == 'super_admin_schools' %}active{% endif %}" data-url="{% url 'super_admin_schools' %}">
+                <i class="fas fa-school"></i>
+                <span>Schools</span>
+            </div>
+            <!-- Subjects -->
+            <div class="nav-item {% if request.resolver_match.url_name == 'subject_list' %}active{% endif %}" data-url="{% url 'subject_list' %}">
+                <i class="fas fa-book"></i>
+                <span>Subjects</span>
+            </div>
+
+        <!-- ===== SCHOOL ADMIN ===== -->
+        {% elif request.user.role == 'ADMIN' %}
+            <!-- Users -->
+            <div class="nav-item {% if request.resolver_match.url_name == 'user_list' %}active{% endif %}" data-url="{% url 'user_list' %}">
+                <i class="fas fa-users"></i>
+                <span>Users</span>
+            </div>
+            <!-- FAB - SIMPLE LINK -->
+            <a href="{% url 'register_page' %}" class="fab-container" >
+                <div class="fab-main"><i class="fas fa-plus"></i></div>
+            </a>
+            <!-- Finance -->
+            <div class="nav-item {% if request.resolver_match.url_name == 'payement_detail' %}active{% endif %}" data-url="{% url 'payement_detail' %}">
+                <i class="fas fa-money-bill-wave"></i>
+                <span>Finance</span>
+            </div>
+            <!-- Subscription -->
+            <div class="nav-item {% if request.resolver_match.url_name == 'subscription_dashboard' %}active{% endif %}" data-url="{% url 'subscription_dashboard' %}">
+                <i class="fas fa-credit-card"></i>
+                <span>Subscription</span>
+            </div>
+
+        <!-- ===== HEAD TEACHER ===== -->
+        {% elif request.user.role == 'HEAD_TEACHER' %}
+            <!-- Users -->
+            <div class="nav-item {% if request.resolver_match.url_name == 'user_list' %}active{% endif %}" data-url="{% url 'user_list' %}">
+                <i class="fas fa-users"></i>
+                <span>Users</span>
+            </div>
+            <!-- FAB - SIMPLE LINK -->
+            <a href="{% url 'register_page' %}" class="fab-container" >
+                <div class="fab-main"><i class="fas fa-plus"></i></div>
+            </a>
+            <!-- Classes -->
+            <div class="nav-item {% if request.resolver_match.url_name == 'classroom_list' %}active{% endif %}" data-url="{% url 'classroom_list' %}">
+                <i class="fas fa-building"></i>
+                <span>Classes</span>
+            </div>
+
+        <!-- ===== TEACHER ===== -->
+        {% elif request.user.role == 'TEACHER' %}
+            <!-- My Students -->
+            <div class="nav-item {% if request.resolver_match.url_name == 'student_list' %}active{% endif %}" data-url="{% url 'student_list' %}">
+                <i class="fas fa-user-graduate"></i>
+                <span>Students</span>
+            </div>
+            <!-- Attendance -->
+            <div class="nav-item {% if request.resolver_match.url_name == 'attendance_report' %}active{% endif %}" data-url="{% url 'attendance_report' %}">
+                <i class="fas fa-calendar-check"></i>
+                <span>Attendance</span>
+            </div>
+            <!-- Results -->
+            <div class="nav-item {% if request.resolver_match.url_name == 'class_results' %}active{% endif %}" data-url="{% url 'class_results' %}">
+                <i class="fas fa-chart-line"></i>
+                <span>Results</span>
+            </div>
+
+        <!-- ===== PARENT ===== -->
+        {% elif request.user.role == 'PARENT' %}
+            <!-- Children -->
+            <div class="nav-item {% if request.resolver_match.url_name == 'student_list' %}active{% endif %}" data-url="{% url 'student_list' %}">
+                <i class="fas fa-child"></i>
+                <span>Children</span>
+            </div>
+            <!-- Results -->
+            <div class="nav-item {% if request.resolver_match.url_name == 'report_card' %}active{% endif %}" data-url="{% url 'report_card' %}">
+                <i class="fas fa-file-alt"></i>
+                <span>Results</span>
+            </div>
+            <!-- Payments -->
+            <div class="nav-item {% if request.resolver_match.url_name == 'payement_detail' %}active{% endif %}" data-url="{% url 'payement_detail' %}">
+                <i class="fas fa-money-bill-wave"></i>
+                <span>Payments</span>
+            </div>
+
+        <!-- ===== STUDENT ===== -->
+        {% elif request.user.role == 'STUDENT' %}
+            <!-- Attendance -->
+            <div class="nav-item {% if request.resolver_match.url_name == 'attendance_report' %}active{% endif %}" data-url="{% url 'attendance_report' %}">
+                <i class="fas fa-calendar-check"></i>
+                <span>Attendance</span>
+            </div>
+            <!-- Report Card -->
+            <div class="nav-item {% if request.resolver_match.url_name == 'report_card' %}active{% endif %}" data-url="{% url 'report_card' %}">
+                <i class="fas fa-file-alt"></i>
+                <span>Report Card</span>
+            </div>
+
+        {% endif %}
+
+    </div>
+</div>
+
+<script>
+    // Service Worker Registration
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/serviceworker.js', { scope: '/' })
+            .then(reg => console.log('✅ Service Worker Registered!'))
+            .catch(err => console.log('❌ Service Worker Error:', err));
+    }
+
+    // ========== NOTIFICATION BELL CLICK HANDLER ==========
+    const notificationBell = document.getElementById('notificationBell');
+    if (notificationBell) {
+        notificationBell.addEventListener('click', function(e) {
+            e.stopPropagation();
+            window.location.href = "{% url 'user_notifications' %}";
+        });
+    }
+
+    // Menu Item Clicks
+    document.querySelectorAll('.menu-item[data-url]').forEach(item => {
+        item.addEventListener('click', () => window.location.href = item.getAttribute('data-url'));
+    });
+
+    // Bottom Navigation Items
+    document.querySelectorAll('.nav-item[data-url]').forEach(item => {
+        item.addEventListener('click', function() {
+            window.location.href = this.getAttribute('data-url');
+        });
+    });
+
+    // ========== TOAST FUNCTION ==========
+    let lastToastMessage = '', lastToastTime = 0;
+    function showToast(message, type = 'success', title = '') {
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
+        const now = Date.now();
+        if (lastToastMessage === message && (now - lastToastTime) < 2000) return;
+        lastToastMessage = message;
+        lastToastTime = now;
+        
+        const titles = { success: 'Success', error: 'Error', warning: 'Warning', info: 'Message' };
+        const finalTitle = title || titles[type] || 'Message';
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        
+        let iconClass = 'fa-check-circle', progressColor = '#10b981';
+        if (type === 'success') { iconClass = 'fa-check-circle'; progressColor = '#10b981'; }
+        else if (type === 'error') { iconClass = 'fa-times-circle'; progressColor = '#ef4444'; }
+        else if (type === 'warning') { iconClass = 'fa-exclamation-triangle'; progressColor = '#f59e0b'; }
+        else if (type === 'info') { iconClass = 'fa-info-circle'; progressColor = '#3b82f6'; }
+        
+        toast.innerHTML = `
+            <div class="toast-icon"><i class="fas ${iconClass}"></i></div>
+            <div class="toast-content">
+                <div class="toast-title">${finalTitle}</div>
+                <div class="toast-message">${message}</div>
+            </div>
+            <button class="toast-close" onclick="this.closest('.toast').remove()"><i class="fas fa-times"></i></button>
+            <div class="toast-progress"><div class="toast-progress-bar" style="background: ${progressColor}"></div></div>
+        `;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.classList.add('hide');
+            setTimeout(() => toast.remove(), 300);
+        }, 5000);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(() => {
+            document.querySelectorAll('.alert:not(.register-container .alert), .alert-error, .alert-warning, .alert-info').forEach(msg => {
+                const messageText = (msg.innerText || '').trim();
+
+                if(!messageText){
+                    msg.remove();
+                    return;
+                }
+                let type = 'info', message = msg.innerText;
+                if (msg.classList.contains('alert-success')) type = 'success';
+                else if (msg.classList.contains('alert-error')) type = 'error';
+                else if (msg.classList.contains('alert-warning')) type = 'warning';
+                showToast(message, type);
+                msg.remove();
+            });
+        }, 100);
+    });
+
+    // ========== NOTIFICATION SYSTEM ==========
+    let lastUnreadCount = 0, initialCheckDone = false;
+    
+    function playNotificationSound() {
+        try { new Audio("{% static 'sounds/ding.mp3' %}").play().catch(e => console.log('Sound error:', e)); } catch(e) {}
+    }
+    
+    function showInAppNotification(title, message, notificationId) {
+        const shownKey = `notif_${notificationId}`;
+        if (sessionStorage.getItem(shownKey)) return;
+        sessionStorage.setItem(shownKey, 'shown');
+        if (typeof showToast === 'function') showToast(message, 'info', title);
+        playNotificationSound();
+        if ('Notification' in window && Notification.permission === 'granted') {
+            const browserNotif = new Notification(title, { body: message, tag: 'edunexus' });
+            browserNotif.onclick = () => { window.focus(); window.location.href = '/notifications/'; };
+            setTimeout(() => browserNotif.close(), 5000);
+        }
+    }
+    
+    function checkNewNotifications() {
+        fetch('/notifications/unread-count/')
+            .then(res => res.json())
+            .then(data => {
+                const badge = document.getElementById('unreadBadge');
+                const mobileBadge = document.getElementById('mobileBadgeCount');
+                const newCount = data.unread_count;
+                if (badge && newCount > 0) { badge.style.display = 'inline-block'; badge.textContent = newCount > 9 ? '9+' : newCount; }
+                else if (badge) badge.style.display = 'none';
+                if (mobileBadge && newCount > 0) { mobileBadge.style.display = 'inline-block'; mobileBadge.textContent = newCount > 9 ? '9+' : newCount; }
+                else if (mobileBadge) mobileBadge.style.display = 'none';
+                if (!initialCheckDone && newCount > 0) {
+                    initialCheckDone = true;
+                    fetch('/notifications/latest/').then(res => res.json()).then(notifData => notifData.forEach(notif => showInAppNotification(notif.title, notif.message, notif.id))).catch(err => console.log(err));
+                }
+                if (initialCheckDone && newCount > lastUnreadCount && lastUnreadCount !== 0) {
+                    fetch('/notifications/latest/').then(res => res.json()).then(notifData => notifData.forEach(notif => showInAppNotification(notif.title, notif.message, notif.id))).catch(err => console.log(err));
+                }
+                lastUnreadCount = newCount;
+            }).catch(err => console.log('Notification fetch error:', err));
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+        setTimeout(() => checkNewNotifications(), 500);
+        setInterval(checkNewNotifications, 10000);
+    });
+    
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) checkNewNotifications(); });
+</script>
+</body>
+</html>

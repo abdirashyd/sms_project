@@ -1,0 +1,326 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Fee Structure & Collection{% endblock %}
+
+{% block content %}
+
+<div class="list-header">
+    <div class="list-title">
+        <h1>Fee Structure</h1>
+        <p>Monthly fee per student by class.</p>
+    </div>
+</div>
+
+<!-- Search and Filter Bar -->
+<div class="search-container">
+    <form method="GET" class="search-form">
+        <div class="search-input-wrapper">
+            <i class="fas fa-search"></i>
+            <input type="text" name="search" placeholder="Search by class name..." value="{{ search_query }}">
+        </div>
+        <button type="submit" class="search-btn">Search</button>
+        {% if search_query %}
+        <a href="{% url 'fee_structures' %}" class="clear-btn">Clear</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Fee Structure Table -->
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Class</th>
+                <th>Stream</th>
+                <th>Students</th>
+                <th>Fee per Student (KES/month)</th>
+                <th>Expected Monthly Total</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for classroom in classrooms %}
+            <tr>
+                <td>{{ classroom.name }}</td>
+                <td>{{ classroom.stream|default:"-" }}</td>
+                <td>{{ classroom.get_students_count }}</td>
+                <td>
+                    <input type="number" 
+                           class="fee-input" 
+                           value="{{ classroom.fee_amount|floatformat:0 }}" 
+                           data-id="{{ classroom.id }}"
+                           style="width: 100px; padding: 5px;">
+                </td>
+                <td> class="expected-total" id="expected-{{ classroom.id }}">
+                    KES {% widthratio classroom.fee_amount 1 classroom.get_students_count %}
+                </td>
+                <td class="action-buttons">
+                    <button class="btn-save" onclick="saveFee({{ classroom.id }})">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="empty-state">
+                    <i class="fas fa-chalkboard"></i>
+                    <p>No classrooms found.</p>
+                    <a href="{% url 'add_classroom' %}" class="add-btn">Add Your First Classroom</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- ============================================ -->
+<!-- MONTHLY FEE COLLECTION SECTION -->
+<!-- ============================================ -->
+<div class="list-header" style="margin-top: 40px;">
+    <div class="list-title">
+        <h1>Monthly Fee Collection</h1>
+        <p>Expected vs Received per class (based on actual payments)</p>
+    </div>
+</div>
+
+<!-- Class Selector -->
+<div class="search-container">
+    <div class="search-form">
+        <div class="search-input-wrapper">
+            <i class="fas fa-chalkboard"></i>
+            <select id="classSelect" class="filter-select" style="width: 100%; padding: 10px;">
+                <option value="">-- Select a Class --</option>
+                {% for classroom in classrooms %}
+                    <option value="{{ classroom.id }}" data-fee="{{ classroom.fee_amount }}" data-students="{{ classroom.get_students_count }}">
+                        {{ classroom.name }} {% if classroom.stream %}({{ classroom.stream }}){% endif %} - {{ classroom.get_students_count }} students
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="button" id="loadCollectionBtn" class="search-btn">
+            <i class="fas fa-chart-line"></i> Load Collection
+        </button>
+    </div>
+</div>
+
+<!-- Monthly Collection Table -->
+<div id="collectionContainer" style="display: none;">
+    <div class="table-wrapper">
+        <table class="data-table" id="collectionTable">
+            <thead>
+                <tr>
+                    <th>Month</th>
+                    <th>Expected (KES)</th>
+                    <th>Received (KES)</th>
+                    <th>Pending (KES)</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="collectionBody">
+                <!-- Dynamic content will be loaded here from API -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Payment Modal -->
+<div id="paymentModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-credit-card"></i> Record Payment</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <form method="POST" action="{% url 'process_payment' %}" id="paymentForm">
+            {% csrf_token %}
+            <input type="hidden" name="month" id="modalMonth">
+            <input type="hidden" name="year" id="modalYear">
+            
+            <div class="form-group">
+                <label>Student Registration Number <span class="required">*</span></label>
+                <input type="text" name="reg_number" placeholder="e.g., ADM-001" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Amount (KES) <span class="required">*</span></label>
+                <input type="number" name="amount_paid" id="modalAmount" step="1" min="1" required>
+                <small id="amountHint"></small>
+            </div>
+            
+            <div class="form-group">
+                <label>M-Pesa Reference <span class="required">*</span></label>
+                <input type="text" name="reference" placeholder="e.g., QWER12TY" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Payment Method</label>
+                <select name="method">
+                    <option value="M-Pesa">M-Pesa</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Bank">Bank Transfer</option>
+                </select>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-save"></i> Submit Payment
+                </button>
+                <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+    
+    let currentClassroomId = null;
+    
+    // Save fee amount
+    function saveFee(classroomId) {
+        const input = document.querySelector(`.fee-input[data-id="${classroomId}"]`);
+        const newFee = parseFloat(input.value);
+        
+        if (isNaN(newFee) || newFee < 0) {
+            alert('Please enter a valid fee amount');
+            return;
+        }
+        
+        fetch(`/finance/api/update-fee/${classroomId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+            },
+            body: JSON.stringify({ fee_amount: newFee })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const students = parseInt(document.querySelector(`.fee-input[data-id="${classroomId}"]`).closest('tr').querySelector('td:nth-child(3)').innerText);
+                const expectedTotal = newFee * students;
+                document.getElementById(`expected-${classroomId}`).innerHTML = `KES ${expectedTotal.toLocaleString()}`;
+                alert('Fee updated successfully!');
+                // Refresh the collection if loaded
+                if (currentClassroomId == classroomId) {
+                    document.getElementById('loadCollectionBtn').click();
+                }
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+    
+    // Load monthly collection
+    document.getElementById('loadCollectionBtn').addEventListener('click', function() {
+        const select = document.getElementById('classSelect');
+        const selectedOption = select.options[select.selectedIndex];
+        const classroomId = select.value;
+        
+        if (!classroomId) {
+            alert('Please select a class first');
+            return;
+        }
+        
+        currentClassroomId = classroomId;
+        loadMonthlyCollection(classroomId);
+    });
+    
+    function loadMonthlyCollection(classroomId) {
+        fetch(`/finance/api/monthly-collection/${classroomId}/`)
+            .then(response => response.json())
+            .then(data => {
+                displayCollectionTable(data);
+                document.getElementById('collectionContainer').style.display = 'block';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error loading collection data. Please make sure you have recorded some payments.');
+            });
+    }
+    
+    function displayCollectionTable(monthlyData) {
+        const tbody = document.getElementById('collectionBody');
+        tbody.innerHTML = '';
+        
+        let totalExpected = 0;
+        let totalReceived = 0;
+        
+        for (let i = 0; i < monthlyData.length; i++) {
+            const data = monthlyData[i];
+            const expected = data.expected;
+            const received = data.received;
+            const pending = expected - received;
+            const percentage = expected > 0 ? (received / expected * 100) : 0;
+            
+            totalExpected += expected;
+            totalReceived += received;
+            
+            let statusClass = '';
+            let statusText = '';
+            if (received >= expected && expected > 0) {
+                statusClass = 'text-success';
+                statusText = '✓ Fully Paid';
+            } else if (received > 0) {
+                statusClass = 'text-warning';
+                statusText = `${Math.round(percentage)}% Paid`;
+            } else {
+                statusClass = 'text-danger';
+                statusText = 'Not Paid';
+            }
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><strong>${monthNames[i]}</strong></td>
+                <td>KES ${expected.toLocaleString()}</td>
+                <td>KES ${received.toLocaleString()}</td>
+                <td>KES ${pending.toLocaleString()}</td>
+                <td class="${statusClass}">${statusText}</td>
+                <td class="action-buttons">
+                    <button class="btn-view" onclick="openPaymentModal(${i + 1}, 2026, ${pending})">
+                        <i class="fas fa-credit-card"></i> Record Payment
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        }
+        
+        // Add total row
+        const collectionRate = totalExpected > 0 ? Math.round(totalReceived / totalExpected * 100) : 0;
+        const totalRow = document.createElement('tr');
+        totalRow.style.background = '#faf5ff';
+        totalRow.style.fontWeight = 'bold';
+        totalRow.innerHTML = `
+            <td><strong>TOTAL</strong></td>
+            <td><strong>KES ${totalExpected.toLocaleString()}</strong></td>
+            <td><strong>KES ${totalReceived.toLocaleString()}</strong></td>
+            <td><strong>KES ${(totalExpected - totalReceived).toLocaleString()}</strong></td>
+            <td colspan="2"><strong>Collection Rate: ${collectionRate}%</strong></td>
+        `;
+        tbody.appendChild(totalRow);
+    }
+    
+    function openPaymentModal(month, year, pendingAmount) {
+        document.getElementById('paymentModal').style.display = 'flex';
+        document.getElementById('modalMonth').value = month;
+        document.getElementById('modalYear').value = year;
+        document.getElementById('modalAmount').max = pendingAmount;
+        document.getElementById('amountHint').innerHTML = 'Maximum payable: KES ' + pendingAmount.toLocaleString();
+    }
+    
+    function closeModal() {
+        document.getElementById('paymentModal').style.display = 'none';
+        document.getElementById('paymentForm').reset();
+    }
+    
+    window.onclick = function(event) {
+        if (event.target == document.getElementById('paymentModal')) {
+            closeModal();
+        }
+    }
+</script>
+
+{% endblock %}
