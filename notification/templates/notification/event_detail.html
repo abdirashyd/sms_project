@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ event.title }}{% endblock %}
+
+{% block content %}
+
+<div class="event-detail-container">
+    <div class="dashboard-header">
+        <h1><i class="fas fa-calendar-alt"></i> Event Details</h1>
+        <p>{{ event.title }}</p>
+        <div style="display: flex; gap: 0.75rem; margin-top: 0.5rem;">
+            <a href="{% url 'school_calendar' %}" class="btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Calendar
+            </a>
+            {% if user.role == 'SUPER_ADMIN' or user.role == 'ADMIN' or user.role == 'HEAD_TEACHER' %}
+                <a href="{% url 'edit_event' event.id %}" class="btn-primary">
+                    <i class="fas fa-edit"></i> Edit
+                </a>
+                <a href="{% url 'delete_event' event.id %}" class="btn-danger" onclick="return confirm('Delete this event?')">
+                    <i class="fas fa-trash"></i> Delete
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="two-columns">
+        <div>
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-info-circle"></i> Event Information</h3>
+                </div>
+                <div class="event-info-grid">
+                    <div class="info-item">
+                        <span class="info-label"><i class="fas fa-tag"></i> Type</span>
+                        <span class="info-value badge badge-{{ event.event_type|lower }}">{{ event.get_event_type_display }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label"><i class="fas fa-calendar-day"></i> Start Date</span>
+                        <span class="info-value">{{ event.start_date|date:"l, d M Y" }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label"><i class="fas fa-calendar-day"></i> End Date</span>
+                        <span class="info-value">{{ event.end_date|date:"l, d M Y" }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label"><i class="fas fa-clock"></i> Time</span>
+                        <span class="info-value">
+                            {% if event.is_all_day %}
+                                All Day
+                            {% else %}
+                                {{ event.start_time|time:"g:i A" }} - {{ event.end_time|time:"g:i A" }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label"><i class="fas fa-map-marker-alt"></i> Location</span>
+                        <span class="info-value">{{ event.location|default:"Not specified" }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label"><i class="fas fa-users"></i> Target</span>
+                        <span class="info-value">{{ event.target_class.name|default:"All Students" }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label"><i class="fas fa-school"></i> School</span>
+                        <span class="info-value">{{ event.school.name }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label"><i class="fas fa-user"></i> Created By</span>
+                        <span class="info-value">{{ event.created_by.get_full_name|default:event.created_by.username }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-align-left"></i> Description</h3>
+                </div>
+                <div class="event-description">
+                    {{ event.description|linebreaks|default:"No description provided." }}
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-bell"></i> Notifications</h3>
+                </div>
+                <div class="notification-info">
+                    <p><i class="fas fa-clock"></i> Notify {{ event.notify_before }} day(s) before</p>
+                    <p><i class="fas fa-users"></i> Recipients: 
+                        {% if event.target_class %}
+                            Students & Parents of {{ event.target_class.name }}
+                        {% else %}
+                            All Students & Parents
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-share-alt"></i> Share Event</h3>
+                </div>
+                <div class="share-buttons">
+                    <button class="btn-secondary" onclick="copyLink()">
+                        <i class="fas fa-copy"></i> Copy Link
+                    </button>
+                    <button class="btn-secondary" onclick="window.print()">
+                        <i class="fas fa-print"></i> Print
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.event-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.5rem;
+    background: #f8fafc;
+    border-radius: 8px;
+}
+
+.info-label {
+    font-size: 0.65rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.info-value {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.event-description {
+    padding: 0.5rem 0;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: #1e293b;
+}
+
+.share-buttons {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.btn-danger {
+    background: #ef4444;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: none;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
+@media (max-width: 768px) {
+    .event-info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .share-buttons {
+        flex-direction: column;
+    }
+}
+</style>
+
+<script>
+function copyLink() {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(() => {
+        alert('Link copied to clipboard!');
+    });
+}
+</script>
+
+{% endblock %}

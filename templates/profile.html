@@ -241,163 +241,10 @@
         {% endif %}
     </div>
 
-    <!-- ========== MAIN CONTENT GRID ========== -->
+    <!-- ========== PROFILE CONTENT GRID ========== -->
     <div class="profile-grid-modern">
-        
-        <!-- LEFT COLUMN - Role-Specific Content -->
-        <div class="profile-card-modern">
-            <div class="card-header-modern">
-                <h3>
-                    <i class="fas fa-info-circle"></i>
-                    {% if user.role == 'STUDENT' %}
-                        Academic Performance
-                    {% elif user.role == 'PARENT' %}
-                        Children Overview
-                    {% elif user.role == 'SUPER_ADMIN' %}
-                        System Overview
-                    {% elif user.role == 'ADMIN' %}
-                        School Overview
-                    {% elif user.role == 'HEAD_TEACHER' %}
-                        School Overview
-                    {% elif user.role == 'TEACHER' %}
-                        My Dashboard
-                    {% endif %}
-                </h3>
-                {% if user.role == 'STUDENT' %}
-                <a href="{% url 'report_card' %}" class="btn-link">View Full Report →</a>
-                {% elif user.role == 'PARENT' %}
-                <a href="{% url 'student_list' %}" class="btn-link">View All Children →</a>
-                {% endif %}
-            </div>
-            
-            <!-- ===== STUDENT ACADEMIC RESULTS ===== -->
-            {% if user.role == 'STUDENT' and student.results.all %}
-                <div class="results-timeline">
-                    {% regroup student.results.all by exam as exam_results %}
-                    {% for exam_group in exam_results %}
-                        <div class="exam-group">
-                            <div class="exam-header">
-                                <h4><i class="fas fa-calendar-alt"></i> {{ exam_group.grouper.name }}</h4>
-                                <span class="exam-type">{{ exam_group.grouper.get_exam_type_display }}</span>
-                            </div>
-                            <div class="subjects-grid">
-                                {% for result in exam_group.list|slice:":4" %}
-                                <div class="subject-card">
-                                    <div class="subject-name">{{ result.subject.name }}</div>
-                                    <div class="subject-marks">
-                                        <span class="marks">{{ result.marks_obtained }}/{{ result.out_of }}</span>
-                                        <span class="grade-badge grade-{{ result.grades|first|lower }}">{{ result.grades|slice:":3" }}</span>
-                                    </div>
-                                    <div class="subject-progress">
-                                        <div class="progress-bar">
-                                            <div class="progress-fill" style="width: {{ result.marks_obtained }}%;"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                            {% if exam_group.list|length > 4 %}
-                            <div class="view-more">
-                                <a href="{% url 'report_card' %}" class="text-link">View all subjects →</a>
-                            </div>
-                            {% endif %}
-                        </div>
-                    {% endfor %}
-                </div>
-            {% elif user.role == 'STUDENT' %}
-                <div class="empty-state-modern">
-                    <i class="fas fa-chart-line"></i>
-                    <p>No results recorded yet</p>
-                    <span class="empty-subtitle">Results will appear here once available</span>
-                </div>
-
-            <!-- ===== PARENT CHILDREN LIST ===== -->
-            {% elif user.role == 'PARENT' and children %}
-                <div class="children-list">
-                    {% for child in children %}
-                    <div class="child-card">
-                        <div class="child-avatar">{{ child.first_name|first }}{{ child.last_name|first }}</div>
-                        <div class="child-info">
-                            <h4>{{ child.first_name }} {{ child.last_name }}</h4>
-                            <p>{{ child.registration_number }} | {{ child.current_class|default:"Not Assigned" }}</p>
-                            <div class="child-stats">
-                                <span><i class="fas fa-chart-line"></i> {{ child.get_mean_marks|floatformat:1 }}%</span>
-                                <span><i class="fas fa-trophy"></i> {{ child.get_rank }}</span>
-                                <span><i class="fas fa-coins"></i> KES {{ child.get_fee_balance|floatformat:0 }}</span>
-                            </div>
-                        </div>
-                        <a href="{% url 'students_detail' child.id %}" class="btn-view">View Profile</a>
-                    </div>
-                    {% endfor %}
-                </div>
-
-            <!-- ===== SUPER ADMIN SYSTEM OVERVIEW ===== -->
-            {% elif user.role == 'SUPER_ADMIN' and schools %}
-                <div class="schools-list">
-                    {% for school in schools|slice:":5" %}
-                    <div class="school-card">
-                        <div class="school-info">
-                            <h4><i class="fas fa-school"></i> {{ school.name }}</h4>
-                            <p>{{ school.code }} | {{ school.email }}</p>
-                            <div class="school-stats">
-                                <span><i class="fas fa-user-graduate"></i> {{ school.student_count }}</span>
-                                <span><i class="fas fa-chalkboard-user"></i> {{ school.teacher_count }}</span>
-                                <span><i class="fas fa-coins"></i> KES {{ school.payment_total|floatformat:0 }}</span>
-                            </div>
-                        </div>
-                        <a href="{% url 'super_admin_school_detail' school.id %}" class="btn-view">View School</a>
-                    </div>
-                    {% endfor %}
-                    {% if schools|length > 5 %}
-                    <div class="view-more-footer">
-                        <a href="{% url 'super_admin_schools' %}" class="text-link">View all schools →</a>
-                    </div>
-                    {% endif %}
-                </div>
-
-            <!-- ===== TEACHER DASHBOARD ===== -->
-            {% elif user.role == 'TEACHER' and subject_performance %}
-                <div class="teacher-performance">
-                    <h4>Subject Performance</h4>
-                    {% for subject in subject_performance|slice:":5" %}
-                    <div class="performance-item">
-                        <span class="subject-name">{{ subject.name }}</span>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: {{ subject.avg }}%;"></div>
-                        </div>
-                        <span class="percentage">{{ subject.avg }}%</span>
-                    </div>
-                    {% endfor %}
-                </div>
-
-            <!-- ===== ADMIN/HEAD TEACHER OVERVIEW ===== -->
-            {% elif user.role == 'ADMIN' or user.role == 'HEAD_TEACHER' %}
-                <div class="admin-overview">
-                    {% if recent_students %}
-                    <h4>Recently Added Students</h4>
-                    <div class="recent-students-list">
-                        {% for student in recent_students|slice:":5" %}
-                        <div class="recent-student-item">
-                            <span class="student-name">{{ student.first_name }} {{ student.last_name }}</span>
-                            <span class="student-date">{{ student.date_enrolled|date:"d M Y" }}</span>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                    
-                    {% if user.role == 'HEAD_TEACHER' and pending_results > 0 %}
-                    <div class="pending-alert">
-                        <i class="fas fa-clock"></i>
-                        <span>{{ pending_results }} results pending approval</span>
-                        <a href="{% url 'pending_approvals' %}" class="btn-primary btn-sm">Review Now</a>
-                    </div>
-                    {% endif %}
-                </div>
-            {% endif %}
-        </div>
-
-        <!-- RIGHT COLUMN - Personal Info & Actions -->
-        <div class="profile-right-column">
+        <!-- LEFT COLUMN - Personal Info -->
+        <div class="profile-left-column">
             
             <!-- Personal Information Card -->
             <div class="profile-card-modern">
@@ -485,59 +332,55 @@
                             <span>All Users</span>
                         </a>
                     {% elif user.role == 'ADMIN' %}
-                        <a href="{% url 'payement_detail' %}" class="action-btn">
-                            <i class="fas fa-money-bill-wave"></i>
-                            <span>Finance</span>
-                        </a>
                         <a href="{% url 'subscription_dashboard' %}" class="action-btn">
                             <i class="fas fa-credit-card"></i>
                             <span>Subscription</span>
+                        </a>
+                        <a href="{% url 'user_list' %}" class="action-btn">
+                            <i class="fas fa-users"></i>
+                            <span>Manage Users</span>
                         </a>
                     {% elif user.role == 'HEAD_TEACHER' %}
                         <a href="{% url 'promote_students' %}" class="action-btn">
                             <i class="fas fa-arrow-up"></i>
                             <span>Promote Students</span>
                         </a>
-                        <a href="{% url 'subject_allocations' %}" class="action-btn">
-                            <i class="fas fa-book"></i>
-                            <span>Subject Allocation</span>
+                        <a href="{% url 'add_results' %}" class="action-btn">
+                            <i class="fas fa-edit"></i>
+                            <span>Add Results</span>
                         </a>
                     {% elif user.role == 'TEACHER' %}
                         <a href="{% url 'add_results' %}" class="action-btn">
                             <i class="fas fa-edit"></i>
                             <span>Add Results</span>
                         </a>
-                        <a href="{% url 'attendance_report' %}" class="action-btn">
-                            <i class="fas fa-calendar-check"></i>
-                            <span>Attendance</span>
+                        <a href="{% url 'teacher_resource_list' %}" class="action-btn">
+                            <i class="fas fa-folder-open"></i>
+                            <span>My Resources</span>
+                        </a>
+                        <a href="{% url 'my_allocations' %}" class="action-btn">
+                            <i class="fas fa-book"></i>
+                            <span>My Subjects</span>
                         </a>
                     {% elif user.role == 'STUDENT' %}
                         <a href="{% url 'report_card' %}" class="action-btn">
                             <i class="fas fa-file-alt"></i>
                             <span>Report Card</span>
                         </a>
-                        <a href="{% url 'payement_detail' %}" class="action-btn">
-                            <i class="fas fa-money-bill-wave"></i>
-                            <span>Pay Fees</span>
+                        <a href="{% url 'student_resource_library' %}" class="action-btn">
+                            <i class="fas fa-book"></i>
+                            <span>Resources</span>
                         </a>
                     {% elif user.role == 'PARENT' %}
-                        <a href="{% url 'payement_detail' %}" class="action-btn">
-                            <i class="fas fa-money-bill-wave"></i>
+                        <a href="{% url 'report_card' %}" class="action-btn">
+                            <i class="fas fa-file-alt"></i>
+                            <span>Child's Report</span>
+                        </a>
+                        <a href="{% url 'payment_detail' %}" class="action-btn">
+                            <i class="fas fa-coins"></i>
                             <span>Pay Fees</span>
                         </a>
-                        <a href="{% url 'student_list' %}" class="action-btn">
-                            <i class="fas fa-child"></i>
-                            <span>My Children</span>
-                        </a>
                     {% endif %}
-                    <a href="{% url 'edit_profile' %}" class="action-btn">
-                        <i class="fas fa-user-edit"></i>
-                        <span>Edit Profile</span>
-                    </a>
-                    <a href="{% url 'user_notifications' %}" class="action-btn">
-                        <i class="fas fa-bell"></i>
-                        <span>Notifications</span>
-                    </a>
                     <a href="{% url 'logout' %}" class="action-btn" onclick="return confirm('Logout?')">
                         <i class="fas fa-sign-out-alt"></i>
                         <span>Logout</span>
@@ -545,11 +388,508 @@
                 </div>
             </div>
         </div>
+
+        <!-- RIGHT COLUMN - Additional Info -->
+        <div class="profile-right-column">
+            
+            <!-- School Overview (for Admins) -->
+            {% if user.role == 'ADMIN' or user.role == 'HEAD_TEACHER' %}
+            <div class="profile-card-modern">
+                <div class="card-header-modern">
+                    <h3><i class="fas fa-school"></i> School Overview</h3>
+                </div>
+                <div class="admin-overview">
+                    <div class="school-stats-mini">
+                        <div class="mini-stat">
+                            <span class="mini-number">{{ student_count|default:"0" }}</span>
+                            <span class="mini-label">Students</span>
+                        </div>
+                        <div class="mini-stat">
+                            <span class="mini-number">{{ teacher_count|default:"0" }}</span>
+                            <span class="mini-label">Teachers</span>
+                        </div>
+                        <div class="mini-stat">
+                            <span class="mini-number">{{ class_count|default:"0" }}</span>
+                            <span class="mini-label">Classes</span>
+                        </div>
+                    </div>
+                    {% if pending_results_count > 0 %}
+                    <div class="pending-alert">
+                        <i class="fas fa-clock"></i>
+                        <span>{{ pending_results_count }} results pending approval</span>
+                        <a href="{% url 'pending_approvals' %}" class="btn-sm">Review</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Recent Activity (for Teachers) -->
+            {% if user.role == 'TEACHER' %}
+            <div class="profile-card-modern">
+                <div class="card-header-modern">
+                    <h3><i class="fas fa-clock"></i> Recent Activity</h3>
+                </div>
+                <div class="recent-activity">
+                    <div class="activity-item">
+                        <i class="fas fa-upload"></i>
+                        <span>Uploaded {{ recent_resources|length|default:"0" }} resources</span>
+                    </div>
+                    <div class="activity-item">
+                        <i class="fas fa-edit"></i>
+                        <span>{{ recent_results_count|default:"0" }} results submitted</span>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Student Info (for Students) -->
+            {% if user.role == 'STUDENT' and student %}
+            <div class="profile-card-modern">
+                <div class="card-header-modern">
+                    <h3><i class="fas fa-graduation-cap"></i> Academic Info</h3>
+                </div>
+                <div class="student-academic-info">
+                    <div class="info-item">
+                        <span class="info-label">Admission Number</span>
+                        <span class="info-value">{{ student.registration_number }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Class</span>
+                        <span class="info-value">{{ student.current_class.name|default:"Not Assigned" }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Enrolled</span>
+                        <span class="info-value">{{ student.date_enrolled|date:"d M Y"|default:"N/A" }}</span>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Parent Children Info -->
+            {% if user.role == 'PARENT' and children %}
+            <div class="profile-card-modern">
+                <div class="card-header-modern">
+                    <h3><i class="fas fa-child"></i> My Children</h3>
+                </div>
+                {% for child in children %}
+                <div class="child-card">
+                    <div class="child-avatar">{{ child.first_name|first }}{{ child.last_name|first }}</div>
+                    <div class="child-info">
+                        <h4>{{ child.first_name }} {{ child.last_name }}</h4>
+                        <p>Class: {{ child.current_class.name|default:"Not Assigned" }}</p>
+                        <div class="child-stats">
+                            <span><i class="fas fa-chart-line"></i> {{ child.get_mean_marks|floatformat:1 }}%</span>
+                            <span><i class="fas fa-trophy"></i> Rank: {{ child.get_rank|default:"N/A" }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+        </div>
     </div>
 </div>
 
 <style>
-/* Child Card Styles */
+/* ================================================
+   PROFILE PAGE STYLES
+   ================================================ */
+
+.profile-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* ===== PROFILE COVER ===== */
+.profile-cover {
+    position: relative;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border-radius: 24px;
+    margin-bottom: 2rem;
+    overflow: hidden;
+    min-height: 180px;
+}
+
+.cover-gradient {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(16, 185, 129, 0.2));
+}
+
+.profile-header-content {
+    position: relative;
+    padding: 2rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    align-items: flex-end;
+}
+
+.profile-avatar-wrapper {
+    position: relative;
+}
+
+.profile-avatar-large {
+    width: 120px;
+    height: 120px;
+    background: linear-gradient(135deg, #2563eb, #10b981);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    font-weight: 600;
+    color: white;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.leadership-badge {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    color: white;
+    font-size: 0.65rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.profile-info-wrapper {
+    flex: 1;
+    min-width: 200px;
+}
+
+.profile-info-wrapper h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 0.75rem;
+}
+
+.profile-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.badge-primary {
+    background: rgba(37, 99, 235, 0.2);
+    color: #60a5fa;
+}
+
+.badge-success {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+}
+
+.badge-info {
+    background: rgba(139, 92, 246, 0.2);
+    color: #a78bfa;
+}
+
+.profile-parent-info {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+}
+
+/* ===== STATS GRID ===== */
+.stats-grid-profile {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card-profile {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+}
+
+.stat-card-profile:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #dbeafe, #d1fae5);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #2563eb;
+    flex-shrink: 0;
+}
+
+.stat-content {
+    flex: 1;
+}
+
+.stat-number {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.2;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+/* ===== PROFILE GRID ===== */
+.profile-grid-modern {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 1.5rem;
+}
+
+.profile-left-column {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.profile-right-column {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* ===== PROFILE CARDS ===== */
+.profile-card-modern {
+    background: white;
+    border-radius: 20px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.card-header-modern {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #f1f5f9;
+}
+
+.card-header-modern h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.card-header-modern h3 i {
+    color: #2563eb;
+    margin-right: 0.5rem;
+}
+
+.btn-edit {
+    font-size: 0.75rem;
+    color: #64748b;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.btn-edit:hover {
+    color: #2563eb;
+}
+
+/* ===== INFO GRID ===== */
+.info-grid-modern {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.info-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: #f8fafc;
+    border-radius: 12px;
+}
+
+.info-icon {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #dbeafe, #d1fae5);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #2563eb;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+
+.info-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.info-label {
+    display: block;
+    font-size: 0.6rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.info-value {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #1e293b;
+    word-break: break-word;
+}
+
+/* ===== STATUS BADGE ===== */
+.status-badge {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.status-present {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.status-absent {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+/* ===== ACTION BUTTONS ===== */
+.action-buttons-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+}
+
+.action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.75rem 0.5rem;
+    background: #f8fafc;
+    border-radius: 12px;
+    text-decoration: none;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.action-btn i {
+    font-size: 1.1rem;
+    color: #2563eb;
+}
+
+.action-btn span {
+    font-size: 0.6rem;
+    color: #1e293b;
+}
+
+.action-btn:hover {
+    background: #e2e8f0;
+    transform: translateY(-2px);
+}
+
+/* ===== SCHOOL OVERVIEW MINI STATS ===== */
+.school-stats-mini {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.mini-stat {
+    text-align: center;
+    padding: 0.75rem;
+    background: #f8fafc;
+    border-radius: 12px;
+}
+
+.mini-number {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.mini-label {
+    font-size: 0.6rem;
+    color: #64748b;
+    text-transform: uppercase;
+}
+
+/* ===== PENDING ALERT ===== */
+.pending-alert {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: #fef3c7;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    color: #92400e;
+}
+
+.pending-alert i {
+    font-size: 1.1rem;
+    color: #f59e0b;
+}
+
+.pending-alert .btn-sm {
+    padding: 0.2rem 0.6rem;
+    font-size: 0.65rem;
+    background: #f59e0b;
+    color: white;
+    border-radius: 6px;
+    text-decoration: none;
+    margin-left: auto;
+}
+
+.pending-alert .btn-sm:hover {
+    background: #d97706;
+}
+
+/* ===== CHILD CARD ===== */
 .child-card {
     display: flex;
     align-items: center;
@@ -607,204 +947,144 @@
     margin-right: 0.2rem;
 }
 
-/* School Card Styles */
-.school-card {
+/* ===== RECENT ACTIVITY ===== */
+.recent-activity {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem;
-    background: #f8fafc;
-    border-radius: 12px;
-    margin-bottom: 0.75rem;
-    transition: all 0.2s;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: 0.5rem;
 }
 
-.school-card:hover {
-    background: #f1f5f9;
-}
-
-.school-info h4 {
-    font-size: 0.85rem;
-    font-weight: 600;
-    margin-bottom: 0.1rem;
-}
-
-.school-info p {
-    font-size: 0.7rem;
-    color: #64748b;
-    margin-bottom: 0.3rem;
-}
-
-.school-stats {
+.activity-item {
     display: flex;
+    align-items: center;
     gap: 0.75rem;
-    font-size: 0.65rem;
+    padding: 0.5rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    font-size: 0.8rem;
     color: #475569;
 }
 
-.school-stats i {
+.activity-item i {
     color: #2563eb;
-    margin-right: 0.2rem;
-}
-
-/* Teacher Performance */
-.teacher-performance {
-    padding: 0.5rem 0;
-}
-
-.teacher-performance h4 {
-    font-size: 0.9rem;
-    font-weight: 600;
-    margin-bottom: 0.75rem;
-}
-
-.performance-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-}
-
-.performance-item .subject-name {
-    width: 80px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: #1e293b;
-}
-
-.performance-item .progress-bar {
-    flex: 1;
-    height: 6px;
-    background: #e2e8f0;
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-.performance-item .progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #2563eb, #10b981);
-    border-radius: 10px;
-}
-
-.performance-item .percentage {
-    font-size: 0.7rem;
-    font-weight: 600;
-    min-width: 35px;
-    text-align: right;
-    color: #10b981;
-}
-
-/* Admin Overview */
-.admin-overview h4 {
-    font-size: 0.9rem;
-    font-weight: 600;
-    margin-bottom: 0.75rem;
-}
-
-.recent-students-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-}
-
-.recent-student-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.3rem 0;
-    border-bottom: 1px solid #f1f5f9;
-    font-size: 0.8rem;
-}
-
-.recent-student-item .student-name {
-    font-weight: 500;
-}
-
-.recent-student-item .student-date {
-    color: #64748b;
-    font-size: 0.7rem;
-}
-
-.pending-alert {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem;
-    background: #fef3c7;
-    border-radius: 12px;
-    margin-top: 0.75rem;
-    font-size: 0.8rem;
-    color: #92400e;
-}
-
-.pending-alert i {
-    font-size: 1.1rem;
-    color: #f59e0b;
-}
-
-.pending-alert .btn-sm {
-    padding: 0.2rem 0.6rem;
-    font-size: 0.65rem;
-    background: #f59e0b;
-    color: white;
-    border-radius: 6px;
-    text-decoration: none;
-    margin-left: auto;
-}
-
-.pending-alert .btn-sm:hover {
-    background: #d97706;
-}
-
-/* Quick Actions Grid - ensure consistent */
-.action-buttons-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.5rem;
-}
-
-.action-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.3rem;
-    padding: 0.75rem 0.5rem;
-    background: #f8fafc;
-    border-radius: 12px;
-    text-decoration: none;
-    transition: all 0.2s;
+    font-size: 1rem;
+    width: 20px;
     text-align: center;
 }
 
-.action-btn i {
-    font-size: 1.1rem;
-    color: #2563eb;
+/* ===== STUDENT ACADEMIC INFO ===== */
+.student-academic-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
-.action-btn span {
-    font-size: 0.6rem;
+.student-academic-info .info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.student-academic-info .info-label {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.student-academic-info .info-value {
+    font-size: 0.8rem;
+    font-weight: 600;
     color: #1e293b;
 }
 
-.action-btn:hover {
-    background: #e2e8f0;
-    transform: translateY(-2px);
-}
+/* ================================================
+   RESPONSIVE
+   ================================================ */
 
-/* Responsive */
-@media (max-width: 768px) {
-    .child-card {
-        flex-wrap: wrap;
+@media (max-width: 1024px) {
+    .profile-grid-modern {
+        grid-template-columns: 1fr;
     }
     
-    .school-card {
+    .stats-grid-profile {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .profile-header-content {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: center;
+        text-align: center;
+        padding: 1.5rem;
+    }
+    
+    .profile-avatar-large {
+        width: 80px;
+        height: 80px;
+        font-size: 2rem;
+    }
+    
+    .profile-info-wrapper h1 {
+        font-size: 1.5rem;
+    }
+    
+    .profile-badges {
+        justify-content: center;
+    }
+    
+    .stats-grid-profile {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+    
+    .stat-card-profile {
+        padding: 0.75rem;
+    }
+    
+    .stat-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 1rem;
+    }
+    
+    .stat-number {
+        font-size: 1.25rem;
+    }
+    
+    .info-grid-modern {
+        grid-template-columns: 1fr;
     }
     
     .action-buttons-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .school-stats-mini {
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid-profile {
+        grid-template-columns: 1fr;
+    }
+    
+    .action-buttons-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .school-stats-mini {
+        grid-template-columns: 1fr;
+    }
+    
+    .profile-card-modern {
+        padding: 1rem;
+    }
+    
+    .profile-cover {
+        border-radius: 16px;
+        min-height: 140px;
     }
 }
 </style>

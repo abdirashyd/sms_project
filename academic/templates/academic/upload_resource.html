@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Upload Resource{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <h1><i class="fas fa-upload"></i> Upload Resource</h1>
+    <p>Share educational materials with students</p>
+</div>
+
+<div class="modern-card">
+    <div class="card-header-modern">
+        <h3><i class="fas fa-file-alt"></i> Resource Details</h3>
+    </div>
+    <form method="POST" enctype="multipart/form-data" class="upload-form">
+        {% csrf_token %}
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>Title <span class="required">*</span></label>
+                <input type="text" name="title" class="form-control-modern" placeholder="Enter resource title" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Description</label>
+                <textarea name="description" class="form-control-modern" rows="3" placeholder="Brief description of the resource"></textarea>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Subject <span class="required">*</span></label>
+                <select name="subject" class="form-control-modern" id="id_subject" required>
+                    <option value="">-- Select Subject --</option>
+                    {% for subject in allocated_subjects %}
+                        <option value="{{ subject.id }}">{{ subject.name }}</option>
+                    {% endfor %}
+                </select>
+                {% if user_role == 'TEACHER' %}
+                    <small class="form-hint">Only subjects you are allocated to</small>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label>Class <span class="required">*</span></label>
+                <select name="classroom" class="form-control-modern" id="id_classroom" required>
+                    <option value="">-- Select Class --</option>
+                    {% for classroom in allocated_classes %}
+                        <option value="{{ classroom.id }}">{{ classroom.name }}</option>
+                    {% endfor %}
+                </select>
+                {% if user_role == 'TEACHER' %}
+                    <small class="form-hint">Only classes you are allocated to</small>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Category</label>
+                <select name="category" class="form-control-modern">
+                    <option value="">-- Select Category --</option>
+                    {% for category in categories %}
+                        <option value="{{ category.id }}">{{ category.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Exam Year (optional)</label>
+                <input type="number" name="exam_year" class="form-control-modern" placeholder="e.g., 2024">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Exam Term (optional)</label>
+                <select name="exam_term" class="form-control-modern">
+                    <option value="">-- Not Applicable --</option>
+                    <option value="Term 1">Term 1</option>
+                    <option value="Term 2">Term 2</option>
+                    <option value="Term 3">Term 3</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Publish Status</label>
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" name="is_published" checked> 
+                    <span>Publish immediately</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>File <span class="required">*</span></label>
+                <div class="file-upload-area" id="uploadArea">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h4>Drop your file here</h4>
+                    <p>or click to browse</p>
+                    <input type="file" name="file" id="fileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png" required>
+                    <button type="button" class="btn-secondary" onclick="document.getElementById('fileInput').click()">
+                        <i class="fas fa-folder-open"></i> Browse Files
+                    </button>
+                    <div id="fileName" style="margin-top: 0.5rem; font-size: 0.8rem; color: #64748b;"></div>
+                    <small class="file-hint">Supported: PDF, Word, Excel, PowerPoint, Images (Max 20MB)</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">
+                <i class="fas fa-upload"></i> Upload Resource
+            </button>
+            <a href="{% url 'teacher_resource_list' %}" class="btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<style>
+.file-upload-area {
+    border: 2px dashed #e2e8f0;
+    border-radius: 16px;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s;
+    cursor: pointer;
+    position: relative;
+}
+
+.file-upload-area:hover {
+    border-color: #2563eb;
+    background: #f8fafc;
+}
+
+.file-upload-area input[type="file"] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.file-upload-area i {
+    font-size: 2.5rem;
+    color: #94a3b8;
+    margin-bottom: 0.5rem;
+}
+
+.file-upload-area h4 {
+    font-size: 1rem;
+    margin-bottom: 0.2rem;
+}
+
+.file-upload-area p {
+    color: #64748b;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+}
+
+.file-hint {
+    display: block;
+    margin-top: 0.5rem;
+    color: #94a3b8;
+    font-size: 0.7rem;
+}
+
+.checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
+}
+
+.checkbox-wrapper input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #2563eb;
+}
+
+.upload-form .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+    .upload-form .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+document.getElementById('fileInput').addEventListener('change', function() {
+    const fileName = this.files[0] ? this.files[0].name : '';
+    document.getElementById('fileName').textContent = fileName;
+});
+</script>
+
+{% endblock %}

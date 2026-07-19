@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Edit Event{% endblock %}
+
+{% block content %}
+
+<div class="form-container">
+    <div class="dashboard-header">
+        <h1><i class="fas fa-calendar-edit"></i> Edit Event</h1>
+        <p>Update event details</p>
+        <a href="{% url 'school_calendar' %}" class="btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Calendar
+        </a>
+    </div>
+
+    <div class="card">
+        <form method="POST" class="event-form">
+            {% csrf_token %}
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="title">Event Title *</label>
+                    <input type="text" id="title" name="title" value="{{ event.title }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="event_type">Event Type *</label>
+                    <select id="event_type" name="event_type" required>
+                        {% for type in event_types %}
+                            <option value="{{ type.0 }}" {% if event.event_type == type.0 %}selected{% endif %}>
+                                {{ type.1 }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="start_date">Start Date *</label>
+                    <input type="date" id="start_date" name="start_date" value="{{ event.start_date|date:'Y-m-d' }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="end_date">End Date</label>
+                    <input type="date" id="end_date" name="end_date" value="{{ event.end_date|date:'Y-m-d' }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="start_time">Start Time</label>
+                    <input type="time" id="start_time" name="start_time" value="{{ event.start_time|time:'H:i' }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="end_time">End Time</label>
+                    <input type="time" id="end_time" name="end_time" value="{{ event.end_time|time:'H:i' }}">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="location">Location</label>
+                <input type="text" id="location" name="location" value="{{ event.location|default:'' }}" placeholder="e.g., School Hall, Room 101">
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" rows="4" placeholder="Describe the event...">{{ event.description }}</textarea>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="target_class">Target Class</label>
+                    <select id="target_class" name="target_class">
+                        <option value="">All Students</option>
+                        {% for class in classes %}
+                            <option value="{{ class.id }}" {% if event.target_class.id == class.id %}selected{% endif %}>
+                                {{ class.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="color">Color</label>
+                    <div class="color-picker">
+                        {% for color in colors %}
+                            <label class="color-option">
+                                <input type="radio" name="color" value="{{ color }}" {% if event.color == color %}checked{% endif %}>
+                                <span style="background: {{ color }}; width: 30px; height: 30px; border-radius: 50%; display: inline-block;"></span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="is_all_day" {% if event.is_all_day %}checked{% endif %}> All Day Event
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label for="status">Status</label>
+                    <select id="status" name="status">
+                        {% for status in status_choices %}
+                            <option value="{{ status.0 }}" {% if event.status == status.0 %}selected{% endif %}>
+                                {{ status.1 }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <a href="{% url 'school_calendar' %}" class="btn-secondary">Cancel</a>
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-save"></i> Update Event
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+/* Same styles as add_event.html */
+.form-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.color-picker {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.25rem;
+}
+
+.color-option {
+    cursor: pointer;
+    display: inline-block;
+}
+
+.color-option input[type="radio"] {
+    display: none;
+}
+
+.color-option input[type="radio"]:checked + span {
+    outline: 3px solid #1e293b;
+    outline-offset: 2px;
+}
+
+.event-form .form-group {
+    margin-bottom: 1rem;
+}
+
+.event-form label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.25rem;
+}
+
+.event-form input,
+.event-form select,
+.event-form textarea {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+
+.event-form input:focus,
+.event-form select:focus,
+.event-form textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.checkbox-label {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    cursor: pointer !important;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: auto !important;
+    width: 18px;
+    height: 18px;
+    accent-color: #2563eb;
+}
+
+.form-actions {
+    display: flex;
+    gap: 0.75rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+    margin-top: 1.5rem;
+}
+
+.btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+    padding: 0.6rem 1.2rem;
+    border-radius: 12px;
+    border: none;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.btn-secondary:hover {
+    background: #e5e7eb;
+}
+
+@media (max-width: 768px) {
+    .form-grid,
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+{% endblock %}

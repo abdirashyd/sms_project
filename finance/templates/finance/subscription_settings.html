@@ -1,0 +1,521 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Subscription Settings{% endblock %}
+
+{% block content %}
+
+<div class="dashboard-header">
+    <h1>Subscription Settings</h1>
+    <p>Configure global pricing, manage schools, and control subscriptions</p>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 1: GLOBAL PRICING SETTINGS                          -->
+<!-- ============================================================ -->
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-globe"></i> Global Pricing Settings</h3>
+        <button class="btn-primary" onclick="saveGlobalSettings()">
+            <i class="fas fa-save"></i> Save Global Settings
+        </button>
+    </div>
+    
+    <form method="POST" id="globalSettingsForm">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update_global">
+        
+        <div class="settings-grid">
+            <!-- Base Pricing -->
+            <div class="settings-section">
+                <h4>Base Pricing</h4>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Monthly Base Fee (KES)</label>
+                        <input type="number" name="monthly_base_fee" class="form-control-modern" value="{{ global_settings.monthly_base_fee|default:2700 }}" step="100" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Termly Base Fee (KES)</label>
+                        <input type="number" name="termly_base_fee" class="form-control-modern" value="{{ global_settings.termly_base_fee|default:7290 }}" step="100" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Annual Base Fee (KES)</label>
+                        <input type="number" name="annual_base_fee" class="form-control-modern" value="{{ global_settings.annual_base_fee|default:19440 }}" step="100" min="0">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tiered Pricing -->
+            <div class="settings-section">
+                <h4>Tiered Pricing (Monthly)</h4>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>0 - 50 Students (KES)</label>
+                        <input type="number" name="tier1_price" class="form-control-modern" value="{{ global_settings.tier1_price|default:2500 }}" step="100" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>51 - 150 Students (KES)</label>
+                        <input type="number" name="tier2_price" class="form-control-modern" value="{{ global_settings.tier2_price|default:2700 }}" step="100" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>151+ Students (KES)</label>
+                        <input type="number" name="tier3_price" class="form-control-modern" value="{{ global_settings.tier3_price|default:3000 }}" step="100" min="0">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Discounts -->
+            <div class="settings-section">
+                <h4>Discounts</h4>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Termly Discount (%)</label>
+                        <input type="number" name="termly_discount" class="form-control-modern" value="{{ global_settings.termly_discount|default:10 }}" step="1" min="0" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label>Annual Discount (%)</label>
+                        <input type="number" name="annual_discount" class="form-control-modern" value="{{ global_settings.annual_discount|default:20 }}" step="1" min="0" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label>Parent Per-Student Fee (KES)</label>
+                        <input type="number" name="parent_per_student_fee" class="form-control-modern" value="{{ global_settings.parent_per_student_fee|default:30 }}" step="5" min="0">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top: 0.5rem;">
+                    <label>
+                        <input type="checkbox" name="free_first_month" {% if global_settings.free_first_month %}checked{% endif %}> 
+                        Free First Month for New Schools
+                    </label>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 2: SCHOOL-SPECIFIC OVERRIDES                       -->
+<!-- ============================================================ -->
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <h3><i class="fas fa-school"></i> School-Specific Overrides</h3>
+        <span class="badge">{{ schools|length }} Schools</span>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="data-table-modern">
+            <thead>
+                <tr>
+                    <th>School</th>
+                    <th>Plan</th>
+                    <th>Students</th>
+                    <th>Monthly Fee</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for school in schools %}
+                <tr>
+                    <td><strong>{{ school.name }}</strong></td>
+                    <td>
+                        <span class="plan-badge">{{ school.subscription.billing_cycle|title }}</span>
+                    </td>
+                    <td>{{ school.subscription.get_student_count }}</td>
+                    <td>
+                        <strong>KES {{ school.subscription.calculate_monthly_fee|floatformat:0 }}</strong>
+                    </td>
+                    <!-- ===== UPDATE STATUS DISPLAY ===== -->
+                    <td>
+                        {% if school.subscription.status == 'ACTIVE' %}
+                            <span class="status-badge status-active">Active</span>
+                        {% elif school.subscription.status == 'FREE' %}
+                            <span class="status-badge status-free">Free Access</span>
+                        {% elif school.subscription.status == 'PENDING' %}
+                            <span class="status-badge status-pending">Pending</span>
+                        {% elif school.subscription.status == 'SUSPENDED' %}
+                            <span class="status-badge status-suspended"> Suspended</span>
+                        {% else %}
+                            <span class="status-badge status-inactive">❌ {{ school.subscription.status }}</span>
+                        {% endif %}
+                    </td>
+                    <!-- ===== UPDATE PAUSE/RESUME BUTTON ===== -->
+                    <td>
+                        <div class="action-buttons">
+                            <!-- Edit Button -->
+                            <button class="btn-edit" onclick="openEditModal({{ school.id }})" title="Edit School Settings">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            
+                            <!-- Pause/Resume Button -->
+                            <button class="btn-pause" onclick="togglePause({{ school.id }})" 
+                                    title="{% if school.subscription.status == 'FREE' %}Resume Billing{% else %}Make Free{% endif %}">
+                                {% if school.subscription.status == 'FREE' %}
+                                    <i class="fas fa-play"></i> Resume Billing
+                                {% else %}
+                                    <i class="fas fa-pause"></i> Make Free
+                                {% endif %}
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="empty-state">No schools found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- EDIT SCHOOL MODAL                                            -->
+<!-- ============================================================ -->
+<div id="editSchoolModal" class="payment-modal" style="display: none;">
+    <div class="payment-modal-content" style="max-width: 500px;">
+        <div class="payment-modal-header">
+            <h3><i class="fas fa-edit"></i> Edit School Subscription</h3>
+            <button class="modal-close" onclick="closeModal('editSchoolModal')">&times;</button>
+        </div>
+        <div class="payment-modal-body">
+            <form method="POST" id="editSchoolForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_school">
+                <input type="hidden" name="school_id" id="editSchoolId">
+                
+                <div class="form-group">
+                    <label>School</label>
+                    <input type="text" id="editSchoolName" class="form-control-modern" disabled style="background: #f1f5f9;">
+                </div>
+                
+                <div class="form-group">
+                    <label>Billing Plan</label>
+                    <select name="billing_cycle" id="editBillingCycle" class="form-control-modern">
+                        <option value="MONTHLY">Monthly</option>
+                        <option value="TERMLY">Termly (3 months)</option>
+                        <option value="ANNUALLY">Annually (9 months)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Custom Fee (KES) - Optional</label>
+                    <input type="number" name="custom_fee" id="editCustomFee" class="form-control-modern" placeholder="Leave empty for default pricing" step="100" min="0">
+                    <small>Set a custom fee for this school (overrides global pricing)</small>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('editSchoolModal')">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PAUSE/CONFIRM MODAL                                          -->
+<!-- ============================================================ -->
+<div id="pauseModal" class="payment-modal" style="display: none;">
+    <div class="payment-modal-content" style="max-width: 450px;">
+        <div class="payment-modal-header">
+            <h3 id="pauseModalTitle"><i class="fas fa-pause"></i> Pause Subscription</h3>
+            <button class="modal-close" onclick="closeModal('pauseModal')">&times;</button>
+        </div>
+        <div class="payment-modal-body">
+            <form method="POST" id="pauseForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="toggle_pause">
+                <input type="hidden" name="school_id" id="pauseSchoolId">
+                
+                <p id="pauseMessage" style="margin-bottom: 1rem; color: #475569;"></p>
+                
+                <div class="form-group">
+                    <label>Reason / Notes (Optional)</label>
+                    <textarea name="notes" class="form-control-modern" rows="3" placeholder="Optional notes about this action"></textarea>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('pauseModal')">Cancel</button>
+                    <button type="submit" class="btn-primary" id="pauseActionBtn">Confirm</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- STYLES                                                       -->
+<!-- ============================================================ -->
+<style>
+.settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.settings-section {
+    background: #f8fafc;
+    padding: 1rem;
+    border-radius: 16px;
+}
+
+.settings-section h4 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.settings-section h4 i {
+    color: #2563eb;
+    margin-right: 0.5rem;
+}
+
+.form-row {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.form-row .form-group {
+    flex: 1;
+    min-width: 120px;
+    margin-bottom: 0.5rem;
+}
+
+.form-row .form-group label {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #64748b;
+    display: block;
+    margin-bottom: 0.2rem;
+}
+
+.form-control-modern {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.form-control-modern:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.btn-edit {
+    background: #fef3c7;
+    color: #d97706;
+    padding: 0.25rem 0.6rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.7rem;
+    transition: all 0.2s;
+}
+
+.btn-edit:hover {
+    background: #fde68a;
+    transform: translateY(-1px);
+}
+
+.btn-pause {
+    background: #f3e8ff;
+    color: #7c3aed;
+    padding: 0.25rem 0.6rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.7rem;
+    transition: all 0.2s;
+    margin-left: 0.25rem;
+}
+
+.btn-pause:hover {
+    background: #e9d5ff;
+    transform: translateY(-1px);
+}
+
+.status-paused {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.plan-badge {
+    background: #dbeafe;
+    color: #2563eb;
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    display: inline-block;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
+}
+/* Add to style.css or subscription_settings.html */
+
+.status-free {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.btn-warning {
+    background: #f59e0b;
+    color: white;
+}
+
+@media (max-width: 768px) {
+    .settings-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-row {
+        flex-direction: column;
+    }
+    
+    .form-row .form-group {
+        min-width: 100%;
+    }
+}
+</style>
+
+<!-- ============================================================ -->
+<!-- JAVASCRIPT                                                   -->
+<!-- ============================================================ -->
+<script>
+// ============================================================
+// SAVE GLOBAL SETTINGS
+// ============================================================
+function saveGlobalSettings() {
+    document.getElementById('globalSettingsForm').submit();
+}
+
+// ============================================================
+// MODAL FUNCTIONS
+// ============================================================
+function openModal(id) {
+    document.getElementById(id).style.display = 'flex';
+}
+
+function closeModal(id) {
+    document.getElementById(id).style.display = 'none';
+}
+
+// Close modal on outside click
+window.onclick = function(event) {
+    const modals = document.querySelectorAll('.payment-modal');
+    modals.forEach(modal => {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+}
+
+// ============================================================
+// EDIT SCHOOL MODAL
+// ============================================================
+function openEditModal(schoolId) {
+    // Find the school data from the table
+    const rows = document.querySelectorAll('.data-table-modern tbody tr');
+    let schoolName = '';
+    let billingCycle = '';
+    
+    rows.forEach(row => {
+        const editBtn = row.querySelector('.btn-edit');
+        if (editBtn && editBtn.getAttribute('onclick').includes(schoolId)) {
+            const nameCell = row.querySelector('td strong');
+            if (nameCell) schoolName = nameCell.textContent;
+            
+            const planBadge = row.querySelector('.plan-badge');
+            if (planBadge) {
+                const planText = planBadge.textContent.trim().toUpperCase();
+                if (planText.includes('MONTHLY')) billingCycle = 'MONTHLY';
+                else if (planText.includes('TERMLY')) billingCycle = 'TERMLY';
+                else if (planText.includes('ANNUAL')) billingCycle = 'ANNUALLY';
+            }
+        }
+    });
+    
+    document.getElementById('editSchoolId').value = schoolId;
+    document.getElementById('editSchoolName').value = schoolName || 'School';
+    document.getElementById('editBillingCycle').value = billingCycle || 'MONTHLY';
+    
+    openModal('editSchoolModal');
+}
+
+// ============================================================
+// PAUSE/RESUME SCHOOL - Updated for FREE access
+// ============================================================
+function togglePause(schoolId) {
+    const rows = document.querySelectorAll('.data-table-modern tbody tr');
+    let schoolName = '';
+    let isFree = false;
+    
+    rows.forEach(row => {
+        const pauseBtn = row.querySelector('.btn-pause');
+        if (pauseBtn && pauseBtn.getAttribute('onclick').includes(schoolId)) {
+            const nameCell = row.querySelector('td strong');
+            if (nameCell) schoolName = nameCell.textContent;
+            
+            const statusBadge = row.querySelector('.status-badge');
+            if (statusBadge && statusBadge.textContent.includes('Free Access')) {
+                isFree = true;
+            }
+        }
+    });
+    
+    document.getElementById('pauseSchoolId').value = schoolId;
+    
+    if (isFree) {
+        // Resume Billing
+        document.getElementById('pauseModalTitle').innerHTML = '<i class="fas fa-play"></i> Resume Billing';
+        document.getElementById('pauseMessage').innerHTML = `
+            Are you sure you want to <strong>resume billing</strong> for <strong>${schoolName}</strong>?<br>
+            They will start being charged again.
+        `;
+        document.getElementById('pauseActionBtn').textContent = 'Resume Billing';
+        document.getElementById('pauseActionBtn').className = 'btn-primary';
+    } else {
+        // Make Free
+        document.getElementById('pauseModalTitle').innerHTML = '<i class="fas fa-pause"></i> Make Free';
+        document.getElementById('pauseMessage').innerHTML = `
+            Are you sure you want to <strong>make ${schoolName} FREE</strong>?<br>
+            They will still have access to the system but won't be charged.
+        `;
+        document.getElementById('pauseActionBtn').textContent = 'Make Free';
+        document.getElementById('pauseActionBtn').className = 'btn-warning';
+    }
+    
+    openModal('pauseModal');
+}
+// ============================================================
+// LOAD STATS
+// ============================================================
+function loadStats() {
+    fetch('{% url "subscription_stats_api" %}')
+        .then(response => response.json())
+        .then(data => {
+            if (document.getElementById('activeSubscriptions')) {
+                document.getElementById('activeSubscriptions').textContent = data.active_subscriptions || 0;
+            }
+            if (document.getElementById('pausedSubscriptions')) {
+                document.getElementById('pausedSubscriptions').textContent = data.paused_subscriptions || 0;
+            }
+            if (document.getElementById('monthlyRevenue')) {
+                document.getElementById('monthlyRevenue').textContent = `KES ${(data.total_monthly_revenue || 0).toLocaleString()}`;
+            }
+        })
+        .catch(error => console.log('Error loading stats:', error));
+}
+
+// Load stats on page load
+document.addEventListener('DOMContentLoaded', loadStats);
+</script>
+
+{% endblock %}

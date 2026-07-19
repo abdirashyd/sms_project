@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+
 {% load static %}
 
 {% block title %}Subscription{% endblock %}
@@ -84,7 +84,7 @@
             <span class="amount">{{ termly_fee|floatformat:0 }}</span>
             <span class="period">/term</span>
         </div>
-        <div class="price-save">Save KES {{ monthly_fee|floatformat:0|add:monthly_fee|floatformat:0 }} yearly</div>
+        <div class="price-save">Save KES </div>
         <ul class="pricing-features">
             <li><i class="fas fa-check-circle"></i> Based on {{ student_count }} students</li>
             <li><i class="fas fa-check-circle"></i> 3 months billing cycle</li>
@@ -123,7 +123,7 @@
             <span class="amount">{{ annual_fee|floatformat:0 }}</span>
             <span class="period">/year</span>
         </div>
-        <div class="price-save">Save KES {{ monthly_fee|floatformat:0|add:monthly_fee|add:monthly_fee|floatformat:0 }} yearly</div>
+        <div class="price-save">S</div>
         <ul class="pricing-features">
             <li><i class="fas fa-check-circle"></i> Based on {{ student_count }} students</li>
             <li><i class="fas fa-check-circle"></i> 9 months school year</li>

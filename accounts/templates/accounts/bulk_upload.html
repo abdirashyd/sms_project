@@ -1,0 +1,529 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Bulk Upload{% endblock %}
+
+{% block content %}
+
+<div class="dashboard-header">
+    <h1><i class="fas fa-upload"></i> Bulk Upload</h1>
+    <p>Upload multiple {{ upload_type|default:"users" }} at once using an Excel file</p>
+</div>
+
+<div class="modern-card">
+    <div class="card-header-modern">
+        <h3><i class="fas fa-file-excel"></i> {{ upload_type|default:"Upload" }}</h3>
+        <span class="user-count">Template: .xlsx or .xls</span>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="upload-steps">
+        <div class="step-item">
+            <div class="step-number">1</div>
+            <div class="step-content">
+                <h4>Download Template</h4>
+                <p>Download the Excel template and fill in your data</p>
+                <a href="#" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-download"></i> Download Template
+                </a>
+            </div>
+        </div>
+
+        <div class="step-divider">
+            <i class="fas fa-arrow-down"></i>
+        </div>
+
+        <div class="step-item">
+            <div class="step-number">2</div>
+            <div class="step-content">
+                <h4>Upload File</h4>
+                <p>Select your filled Excel file and upload</p>
+                <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                    {% csrf_token %}
+                    
+                    {% if schools %}
+                    <div class="form-group">
+                        <label>Select School <span class="required">*</span></label>
+                        <select name="school_id" class="form-control-modern" required>
+                            <option value="">-- Select School --</option>
+                            {% for s in schools %}
+                                <option value="{{ s.id }}" {% if school and school.id == s.id %}selected{% endif %}>
+                                    {{ s.name }} ({{ s.code }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+
+                    <div class="upload-area" id="uploadArea">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <h3>Drop your Excel file here</h3>
+                        <p>or click to browse</p>
+                        <input type="file" 
+                               name="file" 
+                               id="fileInput" 
+                               accept=".xlsx,.xls" 
+                               style="display: none;">
+                        <button type="button" class="btn-secondary" onclick="document.getElementById('fileInput').click()">
+                            <i class="fas fa-folder-open"></i> Browse Files
+                        </button>
+                        <div id="fileName" style="margin-top: 0.5rem; font-size: 0.8rem; color: #64748b;"></div>
+                    </div>
+
+                    <div class="form-actions" style="margin-top: 1.5rem;">
+                        <button type="submit" class="btn-primary" id="uploadBtn">
+                            <i class="fas fa-upload"></i> Upload {{ upload_type|default:"Users" }}
+                        </button>
+                        <a href="{% url 'dashboard' %}" class="btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Progress -->
+    <div id="uploadProgress" style="display: none; margin-top: 1.5rem;">
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+            </div>
+            <div class="progress-text">
+                <span id="progressStatus">Processing...</span>
+                <span id="progressPercentage">0%</span>
+            </div>
+        </div>
+        <div id="progressDetails" style="margin-top: 0.5rem; font-size: 0.8rem; color: #64748b;">
+            <span id="successCount">0</span> successful, 
+            <span id="failedCount">0</span> failed
+        </div>
+    </div>
+</div>
+
+<!-- Upload History -->
+<div class="modern-card">
+    <div class="card-header-modern">
+        <h3><i class="fas fa-history"></i> Upload History</h3>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table-modern">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>File</th>
+                    <th>Type</th>
+                    <th>Total</th>
+                    <th>Successful</th>
+                    <th>Failed</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="uploadHistoryBody">
+                <tr>
+                    <td colspan="7" class="empty-state">No upload history found</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.modern-card {
+    background: white;
+    border-radius: 20px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.card-header-modern {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #f1f5f9;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.card-header-modern h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.card-header-modern h3 i {
+    color: #2563eb;
+}
+
+.user-count {
+    font-size: 0.7rem;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+}
+
+.upload-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.step-item {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.step-number {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #2563eb, #10b981);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    flex-shrink: 0;
+    font-size: 0.9rem;
+}
+
+.step-content h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 0.2rem;
+}
+
+.step-content p {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-bottom: 0.5rem;
+}
+
+.step-divider {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 1rem;
+    padding-left: 18px;
+}
+
+.upload-area {
+    border: 2px dashed #e2e8f0;
+    border-radius: 16px;
+    padding: 2.5rem;
+    text-align: center;
+    transition: all 0.3s;
+    cursor: pointer;
+}
+
+.upload-area:hover {
+    border-color: #2563eb;
+    background: #f8fafc;
+}
+
+.upload-area.dragover {
+    border-color: #2563eb;
+    background: #dbeafe;
+}
+
+.upload-area i {
+    font-size: 3rem;
+    color: #94a3b8;
+    margin-bottom: 0.5rem;
+}
+
+.upload-area h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 0.2rem;
+}
+
+.upload-area p {
+    color: #64748b;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+}
+
+.progress-container {
+    background: #f1f5f9;
+    border-radius: 10px;
+    overflow: hidden;
+    height: 8px;
+    position: relative;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 100%;
+    background: #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #2563eb, #10b981);
+    border-radius: 10px;
+    transition: width 0.5s ease;
+    width: 0%;
+}
+
+.progress-text {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.3rem;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+#progressDetails {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.alert {
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    margin-bottom: 1rem;
+}
+
+.alert-success {
+    background: #d1fae5;
+    color: #059669;
+    border-left: 3px solid #10b981;
+}
+
+.alert-error {
+    background: #fee2e2;
+    color: #dc2626;
+    border-left: 3px solid #ef4444;
+}
+
+.alert-warning {
+    background: #fef3c7;
+    color: #d97706;
+    border-left: 3px solid #f59e0b;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 0.4rem;
+}
+
+.form-group label .required {
+    color: #dc2626;
+}
+
+.form-control-modern {
+    width: 100%;
+    padding: 0.7rem 1rem;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+    font-family: 'Inter', sans-serif;
+}
+
+.form-control-modern:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #2563eb, #10b981);
+    color: white;
+    padding: 0.7rem 1.5rem;
+    border: none;
+    border-radius: 40px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.btn-secondary {
+    background: #e2e8f0;
+    color: #475569;
+    padding: 0.7rem 1.5rem;
+    border: none;
+    border-radius: 40px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+}
+
+.btn-secondary:hover {
+    background: #cbd5e1;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.data-table-modern {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table-modern th {
+    padding: 0.8rem;
+    background: #f8fafc;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    text-align: left;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.data-table-modern td {
+    padding: 0.8rem;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 0.8rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #64748b;
+}
+
+@media (max-width: 768px) {
+    .modern-card {
+        padding: 1rem;
+    }
+    
+    .step-item {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .step-divider {
+        padding-left: 0;
+    }
+    
+    .upload-area {
+        padding: 1.5rem;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .form-actions .btn-primary,
+    .form-actions .btn-secondary {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+
+<script>
+// File upload handling
+document.getElementById('fileInput').addEventListener('change', function() {
+    const fileName = this.files[0] ? this.files[0].name : '';
+    document.getElementById('fileName').textContent = fileName;
+    document.getElementById('uploadArea').style.borderColor = '#10b981';
+});
+
+// Drag and drop
+const uploadArea = document.getElementById('uploadArea');
+
+uploadArea.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    this.classList.add('dragover');
+});
+
+uploadArea.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    this.classList.remove('dragover');
+});
+
+uploadArea.addEventListener('drop', function(e) {
+    e.preventDefault();
+    this.classList.remove('dragover');
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        document.getElementById('fileInput').files = files;
+        document.getElementById('fileName').textContent = files[0].name;
+        this.style.borderColor = '#10b981';
+    }
+});
+
+uploadArea.addEventListener('click', function() {
+    document.getElementById('fileInput').click();
+});
+
+// Form submit with progress
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+    const fileInput = document.getElementById('fileInput');
+    if (!fileInput.files || !fileInput.files[0]) {
+        e.preventDefault();
+        alert('Please select a file to upload.');
+        return;
+    }
+    
+    // Show progress
+    document.getElementById('uploadProgress').style.display = 'block';
+    document.getElementById('uploadBtn').disabled = true;
+    document.getElementById('uploadBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+    
+    // Simulate progress (will be replaced by real progress in production)
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress += Math.random() * 10;
+        if (progress > 100) progress = 100;
+        document.getElementById('progressFill').style.width = progress + '%';
+        document.getElementById('progressPercentage').textContent = Math.round(progress) + '%';
+        document.getElementById('successCount').textContent = Math.round(progress / 2);
+        document.getElementById('failedCount').textContent = Math.round((100 - progress) / 10);
+        if (progress >= 100) {
+            clearInterval(interval);
+            document.getElementById('progressStatus').textContent = '✅ Complete!';
+        }
+    }, 300);
+});
+</script>
+
+{% endblock %}

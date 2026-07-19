@@ -2,6 +2,40 @@ from django.db import models
 from django.conf import settings
 from accounts.models import User
 
+class ParentStudentLink(models.Model):
+    """Link parents to their children"""
+    parent = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name='linked_children'
+    )
+    student = models.ForeignKey(
+        'Students', 
+        on_delete=models.CASCADE, 
+        related_name='linked_parents'
+    )
+    school = models.ForeignKey('accounts.School', on_delete=models.CASCADE)
+    
+    RELATIONSHIP_CHOICES = (
+        ('FATHER', 'Father'),
+        ('MOTHER', 'Mother'),
+        ('GUARDIAN', 'Guardian'),
+        ('AUNT', 'Aunt'),
+        ('UNCLE', 'Uncle'),
+        ('GRANDMOTHER', 'Grandmother'),
+        ('GRANDFATHER', 'Grandfather'),
+        ('OTHER', 'Other')
+    )
+    relationship = models.CharField(max_length=20, choices=RELATIONSHIP_CHOICES, default='OTHER')
+    is_primary_contact = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['parent', 'student']
+    
+    def __str__(self):
+        return f"{self.parent.username} → {self.student.registration_number}"
 
 class Students(models.Model):
     # ✅ ADD THIS - School field (which school this student belongs to)

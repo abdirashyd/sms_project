@@ -8,8 +8,7 @@ urlpatterns = [
     
     # Classroom URLs
     path('classroom/', views.classroom_list, name='classroom_list'),
-    path('classroom/add/', views.add_classroom, name='add_classroom'),
-    
+
     # Subject URLs
     path('subject/', views.subject_list, name='subject_list'),
     path('subject/add/', views.add_subject, name='add_subject'),
@@ -22,7 +21,7 @@ urlpatterns = [
     path('results/add/', views.add_results, name='add_results'),
     path('class-results/', views.class_results, name='class_results'),
     path('report-card/', views.report_card, name='report_card'),
-    path('download-pdf/<str:identifier>/<int:exam_id>/', views.download_results_pdf, name='download_results_pdf'),  # ✅ ADD THIS
+    path('download-pdf/<str:identifier>/<int:exam_id>/', views.download_results_pdf, name='download_results_pdf'),
     
     # Results Approval
     path('pending-approvals/', views.pending_approvals, name='pending_approvals'),
@@ -32,4 +31,13 @@ urlpatterns = [
     # Allocations
     path('allocations/', views.subject_allocations, name='subject_allocations'),
     path('my-allocations/', views.my_allocations, name='my_allocations'),
+    
+    # ============================================
+    # TEACHER RESOURCE LIBRARY - COMPLETE
+    # ============================================
+    path('resources/upload/', views.teacher_upload_resource, name='teacher_upload_resource'),
+    path('resources/', views.teacher_resource_list, name='teacher_resource_list'),
+    path('resources/<int:resource_id>/', views.resource_detail, name='resource_detail'),          # ✅ ADD THIS
+    path('resources/<int:resource_id>/download/', views.download_resource, name='download_resource'),  # ✅ ADD THIS
+    path('student/resources/', views.student_resource_library, name='student_resource_library'),
 ]

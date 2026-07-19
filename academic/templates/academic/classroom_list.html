@@ -6,17 +6,11 @@
 {% block content %}
 
 <div class="dashboard-header">
-    <h1>🏫 Classrooms</h1>
+    <h1> Classrooms</h1>
     <p>View all classes and their students</p>
 </div>
 
-<div class="modern-card">
-    <div class="card-header-modern">
-        <h3><i class="fas fa-building"></i> All Classrooms</h3>
-        {% if request.user.role == 'HEAD_TEACHER' or request.user.role == 'ADMIN' %}
-        <a href="{% url 'add_classroom' %}" class="btn-primary"><i class="fas fa-plus"></i> Add Classroom</a>
-        {% endif %}
-    </div>
+
     <div class="table-responsive">
         <table class="data-table-modern">
             <thead>
@@ -48,7 +42,7 @@
                     <td><a href="#" class="btn-view">View</a></td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="6" class="empty-state">No classrooms found. <a href="{% url 'add_classroom' %}">Add one</a>{% if request.user.role == 'SUPER_ADMIN' %} or contact Super Admin{% endif %}</td></tr>
+                <tr><td colspan="6" class="empty-state">No classrooms found. </td></tr>
                 {% endfor %}
             </tbody>
         </table>

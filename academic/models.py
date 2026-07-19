@@ -280,3 +280,158 @@ class SubjectAllocation(models.Model):
     
     def __str__(self):
         return f"{self.classroom.name} - {self.subject.name} → {self.teacher.name}"
+    
+
+# ============================================
+# TEACHER RESOURCE LIBRARY MODEL (UPDATED)
+# ============================================
+
+class ResourceCategory(models.Model):
+    """Categories for resources (e.g., Past Papers, Notes, Revision Materials)"""
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True, null=True)
+    icon = models.CharField(max_length=50, default='fa-file-pdf')
+    school = models.ForeignKey('accounts.School', on_delete=models.CASCADE, null=True, blank=True)
+    is_default = models.BooleanField(default=False)  # For system-wide categories
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name_plural = "Resource Categories"
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name
+
+
+class TeacherResource(models.Model):
+    """Resources uploaded by teachers (papers, notes, etc.)"""
+    
+    FILE_TYPES = (
+        ('PDF', 'PDF Document'),
+        ('WORD', 'Word Document'),
+        ('EXCEL', 'Excel Spreadsheet'),
+        ('PPT', 'PowerPoint Presentation'),
+        ('IMAGE', 'Image'),
+        ('OTHER', 'Other'),
+    )
+    
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    
+    # ===== USING EXISTING RELATIONSHIPS =====
+    # Instead of subject choices, link to actual Subject model
+    subject = models.ForeignKey(
+        'academic.Subject', 
+        on_delete=models.CASCADE,
+        related_name='resources'
+    )
+    
+    # Instead of class choices, link to actual Classroom model
+    classroom = models.ForeignKey(
+        'academic.Classroom',
+        on_delete=models.CASCADE,
+        related_name='resources'
+    )
+    
+    # Teacher who uploaded (must be allocated to this subject & class)
+    teacher = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.CASCADE,
+        related_name='uploaded_resources'
+    )
+    
+    # Category (optional)
+    category = models.ForeignKey(
+        ResourceCategory,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+    
+    # File upload
+    file = models.FileField(upload_to='teacher_resources/%Y/%m/%d/')
+    file_type = models.CharField(max_length=10, choices=FILE_TYPES, default='PDF')
+    file_size = models.IntegerField(default=0, help_text="File size in bytes")
+    file_name = models.CharField(max_length=255, blank=True)  # Original filename
+    
+    # School (for filtering and permissions)
+    school = models.ForeignKey('accounts.School', on_delete=models.CASCADE)
+    
+    # For tracking
+    downloads = models.IntegerField(default=0)
+    is_approved = models.BooleanField(default=True)
+    is_featured = models.BooleanField(default=False)
+    is_published = models.BooleanField(default=True)
+    
+    # Exam specific fields (optional)
+    exam_year = models.IntegerField(null=True, blank=True)
+    exam_term = models.CharField(max_length=50, blank=True, null=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['subject', 'classroom']),
+            models.Index(fields=['school', 'is_published']),
+            models.Index(fields=['-created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.title} - {self.subject.name} ({self.classroom.name})"
+    
+    def get_file_icon(self):
+        icons = {
+            'PDF': 'fa-file-pdf',
+            'WORD': 'fa-file-word',
+            'EXCEL': 'fa-file-excel',
+            'PPT': 'fa-file-powerpoint',
+            'IMAGE': 'fa-file-image',
+            'OTHER': 'fa-file',
+        }
+        return icons.get(self.file_type, 'fa-file')
+    
+    def get_file_size_display(self):
+        if self.file_size < 1024:
+            return f"{self.file_size} B"
+        elif self.file_size < 1024 * 1024:
+            return f"{self.file_size / 1024:.1f} KB"
+        else:
+            return f"{self.file_size / (1024 * 1024):.1f} MB"
+    
+    def increment_downloads(self):
+        self.downloads += 1
+        self.save(update_fields=['downloads'])
+    
+    def can_teacher_upload(self, user):
+        """Check if a teacher can upload to this subject/class"""
+        if user.role not in ['TEACHER', 'ADMIN', 'HEAD_TEACHER']:
+            return False
+        
+        # Admin and Head Teacher can upload to any subject/class in their school
+        if user.role in ['ADMIN', 'HEAD_TEACHER']:
+            return user.school == self.school
+        
+        # Teacher must be allocated to this subject AND this class
+        from academic.models import SubjectAllocation
+        return SubjectAllocation.objects.filter(
+            teacher__user=user,
+            subject=self.subject,
+            classroom=self.classroom
+        ).exists()
+
+
+class ResourceComment(models.Model):
+    """Comments on resources from students/teachers"""
+    resource = models.ForeignKey(TeacherResource, on_delete=models.CASCADE, related_name='comments')
+    user = models.ForeignKey('accounts.User', on_delete=models.CASCADE)
+    comment = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Comment by {self.user.get_full_name()} on {self.resource.title}"

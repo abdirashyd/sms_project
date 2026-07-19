@@ -611,54 +611,6 @@ def subject_list(request):
         'subjects_with_teachers': subjects_with_teachers,
     })
 
-@login_required
-def add_classroom(request):
-    # Only School Admin can add classrooms
-    if request.user.role != 'HEAD_TEACHER':
-        messages.error(request, "Only School Admin can add classrooms.")
-        return redirect('classroom_list')
-    
-    from accounts.models import User
-    # ✅ Get teachers from the Admin's school only
-    teachers = User.objects.filter(role='TEACHER', school=request.user.school)
-
-    if request.method == "POST":
-        name = request.POST.get('name', '').strip()
-        stream = request.POST.get('stream', '').strip()
-        class_teacher_id = request.POST.get('class_teacher')
-        
-        # Get selected subjects
-        subject_ids = request.POST.getlist('subjects')
-
-        if not name:
-            messages.error(request, "Class Name is required!")
-        else:
-            try:
-                # Create the classroom
-                classroom = Classroom.objects.create(
-                    name=name,
-                    stream=stream if stream else None,
-                    class_teacher_id=class_teacher_id if class_teacher_id else None,
-                    school=request.user.school  # ✅ This is the key - assign to their school
-                )
-                
-                # Assign subjects if any selected
-                if subject_ids:
-                    classroom.subjects.set(subject_ids)
-                
-                messages.success(request, f"Classroom '{name} {stream}' added successfully!")
-                return redirect('classroom_list')
-                
-            except Exception as e:
-                messages.error(request, f"Error creating classroom: {e}")
-                print(f"Error details: {e}")  # For debugging
-
-    all_subjects = Subject.objects.all()
-    return render(request, 'academic/add_classroom.html', {
-        'teachers': teachers,
-        'all_subjects': all_subjects,
-    })
-
 
 @login_required
 def add_subject(request):
@@ -1298,3 +1250,377 @@ def my_allocations(request):
     except Teacher.DoesNotExist:
         messages.error(request, "Teacher profile not found.")
         return redirect('dashboard')
+
+
+# ============================================
+# TEACHER RESOURCE LIBRARY VIEWS (UPDATED)
+# ============================================
+from .models import TeacherResource, ResourceCategory
+@login_required
+def teacher_upload_resource(request):
+    """View for teachers to upload resources"""
+    
+    # Only teachers, admins, and head teachers can upload
+    if request.user.role not in ['TEACHER', 'ADMIN', 'HEAD_TEACHER']:
+        messages.error(request, "You don't have permission to upload resources.")
+        return redirect('dashboard')
+    
+    school = request.user.school
+    
+    # Get subjects and classes the teacher is allocated to
+    if request.user.role == 'TEACHER':
+        from academic.models import SubjectAllocation
+        allocations = SubjectAllocation.objects.filter(
+            teacher__user=request.user
+        ).select_related('subject', 'classroom')
+        
+        # Create a list of (subject_id, subject_name, classroom_id, classroom_name)
+        allocated_subjects = []
+        allocated_classes = []
+        allocation_pairs = []
+        
+        for alloc in allocations:
+            if alloc.subject not in allocated_subjects:
+                allocated_subjects.append(alloc.subject)
+            if alloc.classroom not in allocated_classes:
+                allocated_classes.append(alloc.classroom)
+            allocation_pairs.append({
+                'subject_id': alloc.subject.id,
+                'subject_name': alloc.subject.name,
+                'classroom_id': alloc.classroom.id,
+                'classroom_name': str(alloc.classroom)
+            })
+    else:
+        # Admin and Head Teacher can upload to any subject/class in their school
+        from academic.models import Subject, Classroom
+        allocated_subjects = Subject.objects.all()
+        allocated_classes = Classroom.objects.filter(school=school)
+        allocation_pairs = []
+        for subject in allocated_subjects:
+            for classroom in allocated_classes:
+                allocation_pairs.append({
+                    'subject_id': subject.id,
+                    'subject_name': subject.name,
+                    'classroom_id': classroom.id,
+                    'classroom_name': str(classroom)
+                })
+    
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        description = request.POST.get('description')
+        subject_id = request.POST.get('subject')
+        classroom_id = request.POST.get('classroom')
+        category_id = request.POST.get('category')
+        exam_year = request.POST.get('exam_year')
+        exam_term = request.POST.get('exam_term')
+        is_published = request.POST.get('is_published') == 'on'
+        uploaded_file = request.FILES.get('file')
+        
+        # Validation
+        if not title:
+            messages.error(request, "Please enter a title.")
+            return redirect('teacher_upload_resource')
+        
+        if not uploaded_file:
+            messages.error(request, "Please select a file to upload.")
+            return redirect('teacher_upload_resource')
+        
+        if not subject_id or not classroom_id:
+            messages.error(request, "Please select a subject and class.")
+            return redirect('teacher_upload_resource')
+        
+        # Check file size (max 20MB)
+        if uploaded_file.size > 20 * 1024 * 1024:
+            messages.error(request, "File size exceeds 20MB limit.")
+            return redirect('teacher_upload_resource')
+        
+        # Get subject and classroom
+        from academic.models import Subject, Classroom
+        subject = get_object_or_404(Subject, id=subject_id)
+        classroom = get_object_or_404(Classroom, id=classroom_id)
+        
+        # Verify teacher has permission to upload to this subject/class
+        if request.user.role == 'TEACHER':
+            from academic.models import SubjectAllocation
+            if not SubjectAllocation.objects.filter(
+                teacher__user=request.user,
+                subject=subject,
+                classroom=classroom
+            ).exists():
+                messages.error(request, "You are not allocated to teach this subject in this class.")
+                return redirect('teacher_upload_resource')
+        
+        # Get file type
+        import os
+        file_extension = os.path.splitext(uploaded_file.name)[1].lower()
+        file_type_map = {
+            '.pdf': 'PDF',
+            '.doc': 'WORD',
+            '.docx': 'WORD',
+            '.xls': 'EXCEL',
+            '.xlsx': 'EXCEL',
+            '.ppt': 'PPT',
+            '.pptx': 'PPT',
+            '.jpg': 'IMAGE',
+            '.jpeg': 'IMAGE',
+            '.png': 'IMAGE',
+            '.gif': 'IMAGE',
+        }
+        file_type = file_type_map.get(file_extension, 'OTHER')
+        
+        # Get category
+        category = None
+        if category_id:
+            category = ResourceCategory.objects.filter(id=category_id, school=school).first()
+        
+        # Create resource
+        resource = TeacherResource.objects.create(
+            title=title,
+            description=description,
+            subject=subject,
+            classroom=classroom,
+            teacher=request.user,
+            category=category,
+            file=uploaded_file,
+            file_type=file_type,
+            file_size=uploaded_file.size,
+            file_name=uploaded_file.name,
+            school=school,
+            exam_year=exam_year if exam_year else None,
+            exam_term=exam_term if exam_term else None,
+            is_published=is_published
+        )
+        
+        messages.success(request, f"Resource '{title}' uploaded successfully!")
+        return redirect('teacher_resource_list')
+    
+    # GET request - show upload form
+    categories = ResourceCategory.objects.filter(Q(school=school) | Q(is_default=True))
+    
+    context = {
+        'categories': categories,
+        'allocated_subjects': allocated_subjects,
+        'allocated_classes': allocated_classes,
+        'allocation_pairs': allocation_pairs,
+        'school': school,
+        'user_role': request.user.role,
+    }
+    return render(request, 'academic/upload_resource.html', context)
+
+
+@login_required
+def student_resource_library(request):
+    """View for students to see all available resources for their class"""
+    
+    if request.user.role not in ['STUDENT', 'PARENT']:
+        messages.error(request, "You don't have permission to view this page.")
+        return redirect('dashboard')
+    
+    school = request.user.school
+    
+    # Get student's class
+    student_class = None
+    if request.user.role == 'STUDENT' and hasattr(request.user, 'student_record_records'):
+        student = request.user.student_record_records
+        if student.current_class:
+            student_class = student.current_class
+    
+    # Get all published resources for the school
+    resources = TeacherResource.objects.filter(
+        school=school,
+        is_published=True
+    ).select_related('subject', 'classroom', 'teacher').order_by('-created_at')
+    
+    # Filter by student's class
+    if student_class:
+        resources = resources.filter(
+            Q(classroom=student_class) | Q(classroom__isnull=False)
+        )
+    
+    # Filters
+    subject_filter = request.GET.get('subject')
+    class_filter = request.GET.get('classroom')
+    category_filter = request.GET.get('category')
+    search_query = request.GET.get('search')
+    
+    if subject_filter:
+        resources = resources.filter(subject_id=subject_filter)
+    if class_filter:
+        resources = resources.filter(classroom_id=class_filter)
+    if category_filter:
+        resources = resources.filter(category_id=category_filter)
+    if search_query:
+        resources = resources.filter(
+            Q(title__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(subject__name__icontains=search_query)
+        )
+    
+    # Get categories for filter
+    categories = ResourceCategory.objects.filter(
+        Q(school=school) | Q(is_default=True)
+    )
+    
+    # Get all subjects and classes for filters
+    from academic.models import Subject, Classroom
+    subjects = Subject.objects.filter(school=school)
+    classrooms = Classroom.objects.filter(school=school)
+    
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(resources, 12)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+        'subject_filter': subject_filter,
+        'class_filter': class_filter,
+        'category_filter': category_filter,
+        'search_query': search_query,
+        'subjects': subjects,
+        'classrooms': classrooms,
+        'categories': categories,
+        'student_class': student_class,
+    }
+    return render(request, 'academic/student_resource_library.html', context)
+
+@login_required
+def delete_resource(request, resource_id):
+    """Delete a resource (only owner, admin, or head teacher)"""
+    
+    resource = get_object_or_404(TeacherResource, id=resource_id)
+    
+    # Check permission
+    if request.user not in [resource.teacher, 'ADMIN', 'HEAD_TEACHER']:
+        messages.error(request, "You don't have permission to delete this resource.")
+        return redirect('resource_detail', resource_id=resource.id)
+    
+    if request.method == 'POST':
+        title = resource.title
+        resource.delete()
+        messages.success(request, f"Resource '{title}' deleted successfully.")
+        
+        if request.user.role in ['STUDENT', 'PARENT']:
+            return redirect('student_resource_library')
+        return redirect('teacher_resource_list')
+    
+    return render(request, 'academic/confirm_delete_resource.html', {'resource': resource})
+
+# ============================================
+# ADD THESE MISSING VIEWS
+# ============================================
+
+@login_required
+def resource_detail(request, resource_id):
+    """View resource details with ability to download and comment"""
+    
+    resource = get_object_or_404(TeacherResource, id=resource_id, is_published=True)
+    
+    # Check if user has access (school match)
+    if request.user.school != resource.school and request.user.role != 'SUPER_ADMIN':
+        messages.error(request, "You don't have permission to view this resource.")
+        return redirect('dashboard')
+    
+    # Handle comment submission
+    if request.method == 'POST' and request.user.is_authenticated:
+        comment_text = request.POST.get('comment')
+        if comment_text:
+            ResourceComment.objects.create(
+                resource=resource,
+                user=request.user,
+                comment=comment_text
+            )
+            messages.success(request, "Comment added successfully.")
+            return redirect('resource_detail', resource_id=resource.id)
+    
+    # Get comments
+    comments = resource.comments.all()[:20]
+    
+    context = {
+        'resource': resource,
+        'comments': comments,
+    }
+    return render(request, 'academic/resource_detail.html', context)
+
+
+# At the top of views.py - add these if missing
+from django.http import FileResponse, Http404
+from .models import Teacher, Classroom, Subject, Exam, Results, SubjectAllocation, TeacherResource, ResourceCategory, ResourceComment
+import os
+import mimetypes
+
+@login_required
+def download_resource(request, resource_id):
+    """Download a resource file"""
+    
+    resource = get_object_or_404(TeacherResource, id=resource_id, is_published=True)
+    
+    # Check access
+    if request.user.school != resource.school and request.user.role != 'SUPER_ADMIN':
+        messages.error(request, "You don't have permission to download this resource.")
+        return redirect('dashboard')
+    
+    # Increment download count
+    resource.increment_downloads()
+    
+    # Serve file
+    file_path = resource.file.path
+    if os.path.exists(file_path):
+        # Get file content type
+        import mimetypes
+        content_type, _ = mimetypes.guess_type(file_path)
+        response = FileResponse(open(file_path, 'rb'), content_type=content_type)
+        response['Content-Disposition'] = f'attachment; filename="{resource.file_name}"'
+        return response
+    else:
+        raise Http404("File not found.")
+    
+
+@login_required
+def teacher_resource_list(request):
+    """View for teachers to see all their uploaded resources"""
+    
+    if request.user.role not in ['TEACHER', 'ADMIN', 'HEAD_TEACHER', 'SUPER_ADMIN']:
+        messages.error(request, "You don't have permission to view this page.")
+        return redirect('dashboard')
+    
+    # Get resources based on role
+    if request.user.role == 'SUPER_ADMIN':
+        resources = TeacherResource.objects.filter(school=request.user.school).order_by('-created_at')
+    else:
+        resources = TeacherResource.objects.filter(teacher=request.user).order_by('-created_at')
+    
+    # Filters
+    subject_filter = request.GET.get('subject')
+    class_filter = request.GET.get('class_level')
+    search_query = request.GET.get('search')
+    
+    if subject_filter:
+        resources = resources.filter(subject__id=subject_filter)
+    if class_filter:
+        resources = resources.filter(classroom__id=class_filter)
+    if search_query:
+        resources = resources.filter(
+            Q(title__icontains=search_query) |
+            Q(description__icontains=search_query)
+        )
+    
+    # Pagination
+    paginator = Paginator(resources, 12)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Get subjects and classes for filters
+    subjects = Subject.objects.all()
+    classrooms = Classroom.objects.filter(school=request.user.school) if request.user.school else Classroom.objects.none()
+    
+    context = {
+        'page_obj': page_obj,
+        'subject_filter': subject_filter,
+        'class_filter': class_filter,
+        'search_query': search_query,
+        'subjects': subjects,
+        'classrooms': classrooms,
+    }
+    return render(request, 'academic/teacher_resource_list.html', context)
